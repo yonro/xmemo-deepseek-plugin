@@ -42,8 +42,9 @@ export function registerForgetTool(ctx: Context, deps: ToolDeps): void {
         throw new PluginError('CONFIRMATION_REQUIRED', 'Hard deletion requires confirm_hard_delete=true after the user explicitly confirms.', 'not_executed', false)
       }
       const reason = optionalString(args.reason)
+      const memoryMode = await deps.resolveMode()
 
-      if (deps.mode === 'local-only') {
+      if (memoryMode === 'local-only') {
         let removed = false
         await deps.localStore.mutate((store) => {
           const outcome = removeMemoryByReference(store, memoryId)
@@ -62,11 +63,11 @@ export function registerForgetTool(ctx: Context, deps: ToolDeps): void {
         body: { mode: mode === 'hard' ? 'hard_delete' : 'soft_delete', reason },
       })
 
-      if (deps.mode !== 'cloud-only') {
+      if (memoryMode !== 'cloud-only') {
         await deps.localStore.mutate(store => removeMemoryByReference(store, memoryId).store)
       }
 
-      return { memory_id: memoryId, mode, local: deps.mode !== 'cloud-only', cloud: true }
+      return { memory_id: memoryId, mode, local: memoryMode !== 'cloud-only', cloud: true }
     },
     presentCall: args => ({ card: 'generic', title: 'Forget XMemo memory', kind: 'other', rawInput: args }),
   }))

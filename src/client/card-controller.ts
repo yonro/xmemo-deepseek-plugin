@@ -1,16 +1,33 @@
 /**
  * Credential-only card controller, modeled on deepseek-harness's own
  * packages/client/ui-settings-plugins/src/client/web-search-card-controller.ts (readCredential /
- * writeKey shape) but without its CardForm/settings-scope half: our other six config fields have
- * no exposed settings namespace to bind to (see README "Known Limitations"), so this controller
- * stages and saves exactly one field, the XMemo API key, through the credentials RPC — the one
- * channel that is genuinely ungated for an out-of-tree plugin.
+ * writeKey shape) but without its CardForm/settings-scope half: our other config fields have no
+ * exposed settings namespace to bind to (see README "Known Limitations"), so this controller
+ * stages and saves exactly two fields — the XMemo API key and the memory mode — through the
+ * credentials RPC, the one channel that is genuinely ungated for an out-of-tree plugin.
+ *
+ * The mode control mirrors xmemo-cindy-plugin's settings.js (a real `<select>` plus an explicit
+ * Save button, not autosave-on-change) rather than the API key field's own UX, for one structural
+ * reason: `credentials.describe` (see api-proxy.ts) only ever reports `configured`/`writable`,
+ * never the stored value — by design, since this channel exists for secrets. Cindy's `/kv` store
+ * has no such restriction and can echo the saved mode back on load; we cannot. So the select
+ * always starts from `defaultMode` and a "customized"/"default" badge stands in for the value we
+ * structurally cannot read back, exactly like the API key field's own "configured" badge never
+ * reveals the secret itself.
  *
  * Local, minimal types stand in for the harness's own `IApiClient`/`SnapshotStore` (which live in
  * client packages we intentionally do not depend on, to keep this bundle's external surface small
  * and avoid another out-of-tree version-skew fight) — only the exact runtime shape this file calls
  * matters, verified against the live GUI rather than against those packages' own type exports.
  */
+
+export type MemoryMode = 'hybrid' | 'local-only' | 'cloud-only'
+
+const MODE_VALUES: readonly MemoryMode[] = ['hybrid', 'local-only', 'cloud-only']
+
+function isMemoryMode(value: string): value is MemoryMode {
+  return (MODE_VALUES as readonly string[]).includes(value)
+}
 
 export interface CredentialDescriptor {
   configured: boolean
@@ -59,6 +76,12 @@ export interface XmemoCardState {
   apiKeyDraft: string
   apiKeyConfigured: boolean
   apiKeyWritable: boolean
+  mode: MemoryMode
+  modeConfigured: boolean
+  modeWritable: boolean
+  modeSaving: boolean
+  modeSaved: boolean
+  modeFailed: boolean
 }
 
 export interface XmemoCardFace {
@@ -66,6 +89,8 @@ export interface XmemoCardFace {
   editApiKey: (text: string) => void
   save: () => void
   discard: () => void
+  editMode: (value: string) => void
+  saveMode: () => void
 }
 
 export class XmemoCardController {
@@ -74,10 +99,22 @@ export class XmemoCardController {
   private saving = false
   private failed = false
   private credential: CredentialDescriptor = { configured: false, writable: true }
+  private mode: MemoryMode
+  private modeCredential: CredentialDescriptor = { configured: false, writable: true }
+  private modeSaving = false
+  private modeSaved = false
+  private modeFailed = false
 
-  constructor(private readonly api: CredentialsApi, private readonly ref: string) {
+  constructor(
+    private readonly api: CredentialsApi,
+    private readonly ref: string,
+    private readonly modeRef: string,
+    defaultMode: MemoryMode,
+  ) {
+    this.mode = defaultMode
     this.store = new Store(this.projection())
     void this.readCredential()
+    void this.readModeCredential()
   }
 
   private projection(): XmemoCardState {
@@ -88,6 +125,12 @@ export class XmemoCardController {
       apiKeyDraft: this.draft,
       apiKeyConfigured: this.credential.configured,
       apiKeyWritable: this.credential.writable,
+      mode: this.mode,
+      modeConfigured: this.modeCredential.configured,
+      modeWritable: this.modeCredential.writable,
+      modeSaving: this.modeSaving,
+      modeSaved: this.modeSaved,
+      modeFailed: this.modeFailed,
     }
   }
 
@@ -139,12 +182,54 @@ export class XmemoCardController {
     this.publish()
   }
 
+  private async readModeCredential(): Promise<void> {
+    let response: Awaited<ReturnType<CredentialsApi['describe']>>
+    try {
+      response = await this.api.describe({ refs: [this.modeRef] })
+    } catch {
+      return
+    }
+    if (!response.result.ok) return
+    const view = response.result.value.credentials[this.modeRef]
+    this.modeCredential = { configured: view?.configured ?? false, writable: view?.writable ?? true }
+    this.publish()
+  }
+
+  editMode = (value: string): void => {
+    if (!isMemoryMode(value)) return
+    this.mode = value
+    this.modeSaved = false
+    this.modeFailed = false
+    this.publish()
+  }
+
+  saveMode = (): void => {
+    if (this.modeSaving || !this.modeCredential.writable) return
+    this.modeSaving = true
+    this.modeFailed = false
+    this.modeSaved = false
+    this.publish()
+    void (async () => {
+      try {
+        await this.api.set({ ref: this.modeRef, value: this.mode })
+        this.modeSaved = true
+      } catch {
+        this.modeFailed = true
+      }
+      this.modeSaving = false
+      await this.readModeCredential()
+      this.publish()
+    })()
+  }
+
   inject(): XmemoCardFace {
     return {
       hooks: { xmemoCard: this.store },
       editApiKey: this.editApiKey,
       save: this.save,
       discard: this.discard,
+      editMode: this.editMode,
+      saveMode: this.saveMode,
     }
   }
 }

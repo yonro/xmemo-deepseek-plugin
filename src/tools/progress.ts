@@ -45,8 +45,9 @@ export function registerSaveProgressTool(ctx: Context, deps: ToolDeps): void {
       const scope = optionalString(args.scope) ?? deps.config.defaultScope
       const ttlSeconds = boundedInteger(args.ttl_seconds, 604_800, 0, 2_592_000)
       const timeoutMs = deps.config.requestTimeoutMs
+      const mode = await deps.resolveMode()
 
-      if (deps.mode === 'cloud-only') {
+      if (mode === 'cloud-only') {
         const stateResult = await deps.api.request('/v1/update_state', {
           method: 'POST', timeoutMs, write: true,
           body: { state_key: stateKey, scope, content, current_task: currentTask, next_action: nextAction, blocked_reason: blockedReason, ttl_seconds: ttlSeconds },
@@ -67,12 +68,12 @@ export function registerSaveProgressTool(ctx: Context, deps: ToolDeps): void {
         }
       }
 
-      const stateWrite = await writeState({ localStore: deps.localStore, api: deps.api, mode: deps.mode, timeoutMs }, {
+      const stateWrite = await writeState({ localStore: deps.localStore, api: deps.api, mode, timeoutMs }, {
         content, currentTask, nextAction, blockedReason, stateKey, scope, ttlSeconds,
       })
 
       const localId = newLocalId('snapshot')
-      const snapshotWrite = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const snapshotWrite = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'create_snapshot',
         path: '/v1/restart/snapshot',
         idempotent: false,
@@ -147,6 +148,7 @@ export function registerRestoreProgressTool(ctx: Context, deps: ToolDeps): void 
       const recordRestoreEvent = args.record_restore_event !== false
       const ttlSeconds = args.ttl_seconds === undefined ? undefined : boundedInteger(args.ttl_seconds, 604_800, 0, 2_592_000)
       const timeoutMs = deps.config.longRequestTimeoutMs
+      const mode = await deps.resolveMode()
       const requestBody = {
         snapshot_id: snapshotId,
         source_session_id: sourceSessionId,
@@ -157,7 +159,7 @@ export function registerRestoreProgressTool(ctx: Context, deps: ToolDeps): void 
         ttl_seconds: ttlSeconds,
       }
 
-      if (deps.mode === 'cloud-only') {
+      if (mode === 'cloud-only') {
         const cloudResult = await deps.api.request('/v1/restart/restore', {
           method: 'POST', timeoutMs, write: true, signal: exec.signal, body: requestBody,
         })
@@ -167,7 +169,7 @@ export function registerRestoreProgressTool(ctx: Context, deps: ToolDeps): void 
       const store = await deps.localStore.read()
       const localCandidate = findLocalSnapshot(store, snapshotId, scope, stateKey)
 
-      if (deps.mode === 'local-only') {
+      if (mode === 'local-only') {
         if (!localCandidate) throw new PluginError('NO_LOCAL_SNAPSHOT', `No local XMemo snapshot found for scope=${scope}, state_key=${stateKey}.`, 'not_executed', false)
         if (restoreState) await applyLocalCandidate(deps, localCandidate, scope, stateKey, ttlSeconds)
         return toLosslessJson({

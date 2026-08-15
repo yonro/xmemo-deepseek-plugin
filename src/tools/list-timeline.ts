@@ -76,8 +76,9 @@ export function registerListTimelineTool(ctx: Context, deps: ToolDeps): void {
       const since = optionalIsoTimestamp(args.since, 'since')
       const until = optionalIsoTimestamp(args.until, 'until')
       const status = optionalString(args.status) ?? 'active'
+      const mode = await deps.resolveMode()
 
-      const result = await listWithCache<TimelineItem>({ api: deps.api, localStore: deps.localStore, mode: deps.mode }, {
+      const result = await listWithCache<TimelineItem>({ api: deps.api, localStore: deps.localStore, mode }, {
         cacheKind: 'timeline',
         cacheParams: { bucket, scope, sessionId, eventType, since, until, status },
         cloudPath: queryPath('/v1/timeline', { limit, bucket, scope, session_id: sessionId, event_type: eventType, since, until, status }),

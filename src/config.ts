@@ -18,7 +18,7 @@ export const Config: z<PluginConfig> = z.object({
   /** Default `scope` tag applied when a tool call omits one. */
   defaultScope: z.string().default('dsh'),
   /** Sent as the `X-Memory-OS-Agent-ID` header on every cloud request. */
-  agentId: z.string().default('dsh'),
+  agentId: z.string().default('DeepSeek Harness'),
   /** Default per-request timeout in milliseconds. */
   requestTimeoutMs: z.number().step(1).min(1).default(30_000),
   /** Timeout for slower calls (recall, restore) in milliseconds. */

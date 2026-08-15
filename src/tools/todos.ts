@@ -56,8 +56,9 @@ export function registerCreateTodoTool(ctx: Context, deps: ToolDeps): void {
       const scope = optionalString(args.scope) ?? deps.config.defaultScope
       const path = optionalString(args.path) ?? 'dsh/reminders'
       const localId = newLocalId('todo')
+      const mode = await deps.resolveMode()
 
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'create_todo',
         path: '/v1/reminders',
         idempotent: false,
@@ -99,8 +100,9 @@ export function registerListTodosTool(ctx: Context, deps: ToolDeps): void {
       const scope = optionalString(args.scope)
       const itemStatus = args.item_status === 'completed' || args.item_status === 'all' ? args.item_status : 'open'
       const dueBefore = optionalIsoTimestamp(args.due_before, 'due_before')
+      const mode = await deps.resolveMode()
 
-      const result = await listWithCache<TodoItem>({ api: deps.api, localStore: deps.localStore, mode: deps.mode }, {
+      const result = await listWithCache<TodoItem>({ api: deps.api, localStore: deps.localStore, mode }, {
         cacheKind: 'todos',
         cacheParams: { bucket, scope, itemStatus, dueBefore },
         cloudPath: `/v1/reminders?bucket=${encodeURIComponent(bucket)}${scope ? `&scope=${encodeURIComponent(scope)}` : ''}&item_status=${itemStatus === 'all' ? '%25' : itemStatus}${dueBefore ? `&due_before=${encodeURIComponent(dueBefore)}` : ''}&limit=${limit}`,
@@ -144,12 +146,13 @@ export function registerCompleteTodoTool(ctx: Context, deps: ToolDeps): void {
     async execute(args, exec) {
       const todoId = requiredString(args.todo_id, 'todo_id')
       const note = optionalString(args.note)
+      const mode = await deps.resolveMode()
 
       const store = await deps.localStore.read()
       const existing = store.todos.find(t => t.local_id === todoId || t.cloud_id === todoId)
 
       if (!existing) {
-        if (deps.mode === 'local-only') throw new PluginError('NOT_FOUND', `No local TODO found matching ${todoId}.`, 'not_executed', false)
+        if (mode === 'local-only') throw new PluginError('NOT_FOUND', `No local TODO found matching ${todoId}.`, 'not_executed', false)
         const cloudResult = await deps.api.request(`/v1/reminders/${encodeURIComponent(todoId)}/complete`, {
           method: 'POST', timeoutMs: deps.config.requestTimeoutMs, write: true, signal: exec.signal, body: { note },
         })
@@ -157,7 +160,7 @@ export function registerCompleteTodoTool(ctx: Context, deps: ToolDeps): void {
       }
 
       const now = new Date().toISOString()
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'complete_todo',
         path: `/v1/reminders/{todo_id}/complete`,
         idempotent: false,

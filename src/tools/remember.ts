@@ -40,8 +40,9 @@ export function registerRememberTool(ctx: Context, deps: ToolDeps): void {
       const importance = typeof args.importance === 'number' ? Math.min(1, Math.max(0, args.importance)) : undefined
       const localId = newLocalId('memory')
       const semanticKey = optionalString(args.semantic_key) ?? `dsh-local:${localId}`
+      const mode = await deps.resolveMode()
 
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'remember',
         path: '/v1/remember',
         idempotent: true,

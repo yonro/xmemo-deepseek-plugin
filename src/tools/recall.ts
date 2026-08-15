@@ -36,11 +36,12 @@ export function registerRecallTool(ctx: Context, deps: ToolDeps): void {
       const maxItems = boundedInteger(args.max_items, 8, 1, 20)
       const maxTokens = boundedInteger(args.max_tokens, 1200, 128, 4000)
       const preferWorking = args.prefer_working !== false
+      const mode = await deps.resolveMode()
 
       const store = await deps.localStore.read()
       const localItems = localMemoryItems(store, query, { path, bucket, scope, limit: maxItems })
 
-      if (deps.mode === 'local-only') {
+      if (mode === 'local-only') {
         return toLosslessJson({ source: 'local', stale: false, violations: 0, context_text: '', items: localItems.slice(0, maxItems) })
       }
 
@@ -55,13 +56,13 @@ export function registerRecallTool(ctx: Context, deps: ToolDeps): void {
         await deps.localStore.mutate(s => putRecallCache(s, key, 'recall', cloudBody, RECALL_CACHE_TTL_MS))
         const compacted = compactCloudRecallItems(cloudBody.items ?? [], bucket, scope)
         const contextText = compactContextText(cloudBody.context_text, compacted.violations)
-        if (deps.mode === 'cloud-only') {
+        if (mode === 'cloud-only') {
           return toLosslessJson({ source: 'hybrid', stale: false, violations: compacted.violations, context_text: contextText, items: compacted.items.slice(0, maxItems) })
         }
         const merged = mergeMemoryItems(compacted.items, localItems)
         return toLosslessJson({ source: 'hybrid', stale: false, violations: compacted.violations, context_text: contextText, items: merged.slice(0, maxItems) })
       } catch (error) {
-        if (deps.mode === 'cloud-only') throw error
+        if (mode === 'cloud-only') throw error
         const cached = getRecallCache(store, key)
         if (!cached) return toLosslessJson({ source: 'local', stale: false, violations: 0, context_text: '', items: localItems.slice(0, maxItems) })
         const cachedBody = cached.payload as { items?: unknown[]; context_text?: string }

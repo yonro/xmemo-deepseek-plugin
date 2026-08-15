@@ -38,8 +38,9 @@ export function registerRecordEventTool(ctx: Context, deps: ToolDeps): void {
       const importance = boundedNumber(args.importance, 0.5, 0, 1)
       const confidence = boundedNumber(args.confidence, 0.95, 0, 1)
       const localId = newLocalId('event')
+      const mode = await deps.resolveMode()
 
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'record_event',
         path: '/v1/timeline/events',
         idempotent: false,

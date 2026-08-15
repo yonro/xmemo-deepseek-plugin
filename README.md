@@ -49,13 +49,18 @@ Set in this bundle's `cordis.patch.yml`, or override per-profile/home `cordis.pa
 
 | Field | Default | Meaning |
 |---|---|---|
-| `mode` | `hybrid` | `hybrid` (local-first + cloud sync), `local-only` (never calls MemoryOS), or `cloud-only` (no local persistence). |
+| `mode` | `hybrid` | `hybrid` (local-first + cloud sync), `local-only` (never calls MemoryOS), or `cloud-only` (no local persistence). Overridable at runtime — see [Web GUI card](#web-gui-card). |
 | `apiKeyCredential` | `XMEMO_KEY` | Credential reference resolved through `ctx.credentials`. |
 | `apiBaseUrl` | `https://xmemo.dev` | MemoryOS REST API base. Override for a local dev server, e.g. `http://localhost:8000`. |
 | `defaultScope` | `dsh` | Default `scope` tag when a tool call omits one. |
-| `agentId` | `dsh` | Sent as `X-Memory-OS-Agent-ID`. |
+| `agentId` | `DeepSeek Harness` | Sent as `X-Memory-OS-Agent-ID`. |
 | `requestTimeoutMs` | `30000` | Default per-request timeout. |
 | `longRequestTimeoutMs` | `60000` | Timeout for `xmemo_recall` and `xmemo_restore_progress`. |
+
+`mode` is resolved per tool call (`src/mode.ts`, mirroring how `src/auth.ts` resolves the API key) rather
+than read once at boot: a `hybrid`/`local-only`/`cloud-only` value stored under the `XMEMO_MODE`
+credential reference wins over the `cordis.patch.yml` default, so a change saved through the web GUI's
+mode selector reaches the very next tool call without a restart.
 
 ## Tools
 
@@ -77,10 +82,21 @@ ships (`src/client/`, built to `lib/client.js`, declared through the `dsh.client
 `package.json` — no changes to deepseek-harness itself are needed; `dsh-client-modules` scans every
 loaded plugin's `package.json` for that field, not just first-party ones).
 
-Only the **API key** control is genuinely live (real `credentials.describe`/`credentials.set` calls
-— reflects and can change the actual stored key, including correctly showing it as read-only when
-`XMEMO_KEY` is supplied by the launch environment rather than the credentials store). The other six
-config fields render as static descriptive text, not a live read — see "Known Limitations" for why.
+Two controls are genuinely live, both through real `credentials.describe`/`credentials.set` calls:
+
+- **API key** — reflects and can change the actual stored key, including correctly showing it as
+  read-only when `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.
+- **Memory mode** — a real `<select>` (hybrid / local-only / cloud-only) with an explicit Save
+  button, saved under the `XMEMO_MODE` credential reference and picked up by `src/mode.ts` on the
+  very next tool call. Unlike the API key field, the select can't show which value is currently
+  stored — `credentials.describe` deliberately never exposes a credential's value, only whether it's
+  configured (see "Known Limitations") — so it always starts from the `hybrid` default and a
+  "customized"/"default" badge stands in for the value itself, the same way the API key field's
+  "configured" badge never reveals the secret.
+
+The other five config fields (`apiBaseUrl`/`defaultScope`/`agentId`/`requestTimeoutMs`/
+`longRequestTimeoutMs`) aren't shown in the card at all — their defaults are fine for the vast
+majority of setups; override them via `cordis.patch.yml` (see [Config](#config)) if needed.
 
 Build with `npm run build:client` (separate from the host build — needs its own `tsconfig.client.json`
 and `scripts/build-client.mjs`, since the host and browser halves target different runtimes).
@@ -123,13 +139,23 @@ call. See the comment at the top of `src/outbox.ts`.
   claim email/phone redaction, but no such code exists in `main.js` either — it's server-side or
   aspirational. This port's tool descriptions say only what the code does.
 - **Replayed writes only back-fill `cloud_id`**, not richer response fields — see Architecture notes.
-- **The web GUI card can't show live values for `mode`/`apiBaseUrl`/`defaultScope`/`agentId`/
-  `requestTimeoutMs`/`longRequestTimeoutMs`.** The harness's generic settings-persistence pipeline
+- **The web GUI card can only edit `apiKeyCredential` and `mode`; the other five config fields
+  aren't editable from the browser at all.** The harness's generic settings-persistence pipeline
   (`ctx.settingsScope`) is gated by a hardcoded namespace allowlist in deepseek-harness's own
   `packages/host/apiproxy/src/api-proxy.ts` (`WEB_SETTINGS_NAMESPACES`) that an out-of-tree plugin
   cannot extend from its own package (the source comment there calls generalizing it "deferred
-  work"). Only the ungated `credentials.*` RPC is open to third-party plugins today, which is why
-  just the API key control is live.
+  work"). Only the ungated `credentials.*` RPC is open to third-party plugins today — the same
+  channel `apiKeyCredential` already used for its API key — so `mode` piggybacks on it too (a
+  `XMEMO_MODE` credential reference, resolved by `src/mode.ts`), and the remaining five fields have
+  no open channel to bind to at all.
+- **The mode selector can't show the currently saved value, only whether one has been saved.**
+  `credentials.describe` reports `configured`/`writable` but never a credential's value — correct
+  for secrets, but it means the mode select can't be pre-filled with the true stored mode the way
+  Cindy's `/kv`-backed selector can. The select always starts from the `hybrid` default; saving
+  always overwrites blindly, same as the API key field already does.
+- **`XMEMO_MODE` appears in `$DSH_HOME/.credentials.yaml` and the Models page's credentials list
+  once set from the card**, even though it isn't a secret — an accepted tradeoff of reusing the one
+  channel that's actually open to an out-of-tree plugin.
 
 ## Development
 

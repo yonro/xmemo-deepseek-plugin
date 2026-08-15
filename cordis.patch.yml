@@ -13,6 +13,6 @@
         # local dev server (e.g. http://localhost:8000) via profile/home cordis.patch.yml.
         apiBaseUrl: https://xmemo.dev
         defaultScope: dsh
-        agentId: dsh
+        agentId: "DeepSeek Harness"
         requestTimeoutMs: 30000
         longRequestTimeoutMs: 60000

@@ -35,8 +35,9 @@ export function registerUpdateStateTool(ctx: Context, deps: ToolDeps): void {
       const stateKey = optionalString(args.state_key) ?? 'active_task'
       const scope = optionalString(args.scope) ?? deps.config.defaultScope
       const ttlSeconds = boundedInteger(args.ttl_seconds, 604_800, 0, 2_592_000)
+      const mode = await deps.resolveMode()
 
-      const result = await writeState({ localStore: deps.localStore, api: deps.api, mode: deps.mode, timeoutMs: deps.config.requestTimeoutMs }, {
+      const result = await writeState({ localStore: deps.localStore, api: deps.api, mode, timeoutMs: deps.config.requestTimeoutMs }, {
         content, currentTask, nextAction, blockedReason, stateKey, scope, ttlSeconds,
       })
 

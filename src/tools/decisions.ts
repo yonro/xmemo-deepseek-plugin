@@ -74,8 +74,9 @@ export function registerCreateDecisionTool(ctx: Context, deps: ToolDeps): void {
       const scope = optionalString(args.scope) ?? deps.config.defaultScope
       const path = optionalString(args.path) ?? 'dsh/decisions'
       const localId = newLocalId('decision')
+      const mode = await deps.resolveMode()
 
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'create_decision',
         path: '/v1/decisions',
         idempotent: false,
@@ -118,8 +119,9 @@ export function registerListDecisionsTool(ctx: Context, deps: ToolDeps): void {
       const scope = optionalString(args.scope)
       const itemStatus = args.item_status === 'resolved' || args.item_status === 'all' ? args.item_status : 'open'
       const dueBefore = optionalIsoTimestamp(args.due_before, 'due_before')
+      const mode = await deps.resolveMode()
 
-      const result = await listWithCache<DecisionItem>({ api: deps.api, localStore: deps.localStore, mode: deps.mode }, {
+      const result = await listWithCache<DecisionItem>({ api: deps.api, localStore: deps.localStore, mode }, {
         cacheKind: 'decisions',
         cacheParams: { bucket, scope, itemStatus, dueBefore },
         cloudPath: `/v1/decisions?bucket=${encodeURIComponent(bucket)}${scope ? `&scope=${encodeURIComponent(scope)}` : ''}&item_status=${itemStatus === 'all' ? '%25' : itemStatus}${dueBefore ? `&due_before=${encodeURIComponent(dueBefore)}` : ''}&limit=${limit}`,
@@ -164,11 +166,12 @@ export function registerResolveDecisionTool(ctx: Context, deps: ToolDeps): void 
       const decisionId = requiredString(args.decision_id, 'decision_id')
       const resolution = requiredString(args.resolution, 'resolution', 12_000)
 
+      const mode = await deps.resolveMode()
       const store = await deps.localStore.read()
       const existing = store.decisions.find(d => d.local_id === decisionId || d.cloud_id === decisionId)
 
       if (!existing) {
-        if (deps.mode === 'local-only') throw new PluginError('NOT_FOUND', `No local decision found matching ${decisionId}.`, 'not_executed', false)
+        if (mode === 'local-only') throw new PluginError('NOT_FOUND', `No local decision found matching ${decisionId}.`, 'not_executed', false)
         const cloudResult = await deps.api.request(`/v1/decisions/${encodeURIComponent(decisionId)}/resolve`, {
           method: 'POST', timeoutMs: deps.config.requestTimeoutMs, write: true, signal: exec.signal, body: { resolution },
         })
@@ -176,7 +179,7 @@ export function registerResolveDecisionTool(ctx: Context, deps: ToolDeps): void 
       }
 
       const now = new Date().toISOString()
-      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, {
+      const result = await hybridWrite({ localStore: deps.localStore, api: deps.api, mode }, {
         operation: 'resolve_decision',
         path: '/v1/decisions/{decision_id}/resolve',
         idempotent: false,

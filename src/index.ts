@@ -12,6 +12,7 @@ import { createApiKeyResolver } from './auth.ts'
 import type { Config } from './config.ts'
 import { createApiClient } from './http.ts'
 import { loadOrCreateInstanceId } from './identity.ts'
+import { createModeResolver } from './mode.ts'
 import { defaultDataDir, LocalStore } from './store.ts'
 import { registerCreateDecisionTool, registerListDecisionsTool, registerResolveDecisionTool } from './tools/decisions.ts'
 import { registerForgetTool } from './tools/forget.ts'
@@ -47,8 +48,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const instanceId = await loadOrCreateInstanceId(dataDir)
   const resolveApiKey = createApiKeyResolver(ctx, config)
   const api = createApiClient(config, resolveApiKey, instanceId)
+  const resolveMode = createModeResolver(ctx, config)
 
-  const deps: ToolDeps = { api, localStore, mode: config.mode, config }
+  const deps: ToolDeps = { api, localStore, resolveMode, config }
 
   registerStatusTool(ctx, deps)
   registerUpdateStateTool(ctx, deps)

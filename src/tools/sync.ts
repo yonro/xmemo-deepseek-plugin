@@ -24,10 +24,11 @@ export function registerSyncTool(ctx: Context, deps: ToolDeps): void {
       const action = args.action === 'push' || args.action === 'discard_failed' ? args.action : 'status'
       const includeHeld = args.include_held === true
       const limit = boundedInteger(args.limit, 10, 1, 50)
+      const mode = await deps.resolveMode()
 
       if (action === 'status') {
         const store = await deps.localStore.read()
-        return { mode: deps.mode, queue: outboxSummary(store), last_updated_at: store.updated_at }
+        return { mode, queue: outboxSummary(store), last_updated_at: store.updated_at }
       }
 
       if (action === 'discard_failed') {
@@ -35,10 +36,10 @@ export function registerSyncTool(ctx: Context, deps: ToolDeps): void {
         return { discarded: discarded.map(e => ({ local_id: e.local_id, operation: e.operation, error: e.last_error })) }
       }
 
-      if (deps.mode !== 'hybrid') {
-        return { note: `xmemo_sync push is a no-op in ${deps.mode} mode.`, mode: deps.mode }
+      if (mode !== 'hybrid') {
+        return { note: `xmemo_sync push is a no-op in ${mode} mode.`, mode }
       }
-      const result = await syncOutboxInternal({ localStore: deps.localStore, api: deps.api, mode: deps.mode }, { includeHeld, limit })
+      const result = await syncOutboxInternal({ localStore: deps.localStore, api: deps.api, mode }, { includeHeld, limit })
       const store = await deps.localStore.read()
       return { ...result, queue: outboxSummary(store) }
     },

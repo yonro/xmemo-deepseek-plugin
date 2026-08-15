@@ -13,15 +13,12 @@
 
 import { useState } from 'react'
 import type { XmemoCardFace, XmemoCardState } from './card-controller.ts'
-import { OTHER_FIELDS } from './locales.ts'
 import type { XmemoLocaleKey } from './locales.ts'
 
 export interface XmemoCardProps extends XmemoCardFace {
   t: (key: XmemoLocaleKey) => string
   useXmemoCard: (selector: (state: XmemoCardState) => XmemoCardState) => XmemoCardState
 }
-
-const MONOSPACE = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
 
 /** Matches the live GUI's own tokens exactly (see module comment) — not an approximation. */
 const colors = {
@@ -31,7 +28,6 @@ const colors = {
   muted: 'rgb(173, 178, 184)',
   divider: 'rgba(255, 255, 255, 0.12)',
   inputBg: 'rgba(0, 0, 0, 0.25)',
-  keyBg: 'rgba(255, 255, 255, 0.07)',
   accent: '#5b8def',
   danger: '#e5626b',
   okBorder: '#2f5c3d',
@@ -122,32 +118,41 @@ export function XmemoCard(props: XmemoCardProps) {
                 </button>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', borderTop: `0.666667px solid ${colors.divider}`, paddingTop: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ color: colors.text, fontSize: 13, fontWeight: 600 }}>{t('otherFieldsTitle')}</span>
-                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: colors.muted, border: `1px solid ${colors.cardBorder}` }}>
-                  {t('otherFieldsReadOnlyBadge')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: `0.666667px solid ${colors.divider}`, paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label htmlFor="xmemo-mode" style={{ color: colors.text, fontSize: 13 }}>{t('modeLabel')}</label>
+                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: state.modeConfigured ? colors.okText : colors.muted, border: `1px solid ${state.modeConfigured ? colors.okBorder : colors.cardBorder}` }}>
+                  {t(state.modeConfigured ? 'modeCustomized' : 'modeDefault')}
                 </span>
               </div>
-              <p style={{ color: colors.muted, fontSize: 13, margin: '0 0 4px' }}>{t('otherFieldsHint')}</p>
-              <div>
-                {OTHER_FIELDS.map((field, index) => (
-                  <div
-                    key={field.key}
-                    style={{
-                      display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0',
-                      borderTop: index === 0 ? 'none' : `0.666667px solid ${colors.divider}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <code style={{ fontFamily: MONOSPACE, fontSize: 12, color: colors.text, background: colors.keyBg, padding: '2px 6px', borderRadius: 4 }}>
-                        {field.key}
-                      </code>
-                      <code style={{ fontFamily: MONOSPACE, fontSize: 12, color: colors.muted }}>{field.defaultValue}</code>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 13, color: colors.muted }}>{t(field.descriptionKey)}</p>
-                  </div>
-                ))}
+              <select
+                id="xmemo-mode"
+                value={state.mode}
+                disabled={!state.modeWritable || state.modeSaving}
+                onChange={(event) => { props.editMode(event.target.value) }}
+                style={{
+                  background: colors.inputBg, border: `0.666667px solid ${colors.cardBorder}`, borderRadius: 8,
+                  color: colors.text, padding: '8px 10px', fontSize: 13,
+                }}
+              >
+                <option value="hybrid">{t('modeOptionHybrid')}</option>
+                <option value="local-only">{t('modeOptionLocalOnly')}</option>
+                <option value="cloud-only">{t('modeOptionCloudOnly')}</option>
+              </select>
+              <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>
+                {state.modeWritable ? t('modeHint') : t('modeReadOnlyEnv')}
+              </p>
+              {state.modeFailed ? <p style={{ color: colors.danger, fontSize: 13, margin: 0 }} role="status">{t('saveFailed')}</p> : null}
+              {state.modeSaved ? <p style={{ color: colors.okText, fontSize: 13, margin: 0 }} role="status">{t('modeSaved')}</p> : null}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  disabled={state.modeSaving || !state.modeWritable}
+                  onClick={props.saveMode}
+                  style={{ background: colors.accent, border: 'none', borderRadius: 8, color: '#fff', padding: '5px 12px', fontSize: 13, cursor: 'pointer' }}
+                >
+                  {t(state.modeSaving ? 'saving' : 'save')}
+                </button>
               </div>
             </div>
           </div>
