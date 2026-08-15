@@ -91,10 +91,22 @@ end-to-end verification of the OAuth flow against production `xmemo.dev`.
 
 ## Quick start
 
+Not yet published to npm (see [Known Limitations](#known-limitations)), so install from GitHub or a
+local checkout:
+
 ```sh
-dsh plugin --profile <name> add dsh-xmemo
+dsh plugin --profile <name> add github:yonro/xmemo-deepseek-plugin
 # or, from a local checkout:
 dsh plugin --profile <name> add ./xmemo-deepseek-plugin
+```
+
+A git install fetches source, not the built `lib/`, so pnpm blocks this package's `prepare` script
+(which builds both halves — see [Development](#development)) on the first `add` and prints the exact
+key to allow. Add it to the profile's `pnpm-workspace.yaml` and re-run `add`:
+
+```yaml
+allowBuilds:
+  dsh-xmemo: true
 ```
 
 Connect an XMemo account or set an API key (see [Auth](#auth) below), then verify the row loaded:
@@ -256,6 +268,11 @@ call. See the comment at the top of `src/outbox.ts`.
 
 ## Known Limitations
 
+- **Not published to npm yet.** `dsh plugin add dsh-xmemo` doesn't work today; install from GitHub
+  or a local checkout instead — see [Quick start](#quick-start). Also not yet tagged with the
+  `dsh-plugin` GitHub topic, the harness's only discovery mechanism ("Contribute to the ecosystem"
+  in [`CONTRIBUTING.md`](https://github.com/deepseek-ai/deepseek-harness/blob/main/CONTRIBUTING.md))
+  — DeepSeek Harness has no central plugin marketplace or submission process by design.
 - **OAuth connect needs a desktop with a browser.** The flow opens a system browser and waits on a
   loopback listener for its redirect; a headless `dsh` instance (no desktop session to open a
   browser in) can't complete it — use the static API key there instead.
