@@ -49,12 +49,15 @@ function Chevron({ open }: { open: boolean }) {
   )
 }
 
-/** Authenticated when either method is set up — the API key counts as fully "connected" too, matching auth.ts's own fallback. */
+/**
+ * Authenticated when either method is set up — the API key counts as fully "connected" too, matching
+ * auth.ts's own fallback — and the badge names which one is actually in effect (OAuth wins when both
+ * are present, mirroring auth.ts exactly) rather than leaving that ambiguous.
+ */
 function oauthBadge(state: XmemoCardState): { key: XmemoLocaleKey; color: string; border: string } {
-  const authenticated = state.oauthConnected || state.apiKeyConfigured
-  return authenticated
-    ? { key: 'oauthConnected', color: colors.okText, border: colors.okBorder }
-    : { key: 'oauthNotConnected', color: colors.muted, border: colors.cardBorder }
+  if (state.oauthConnected) return { key: 'oauthConnectedViaOAuth', color: colors.okText, border: colors.okBorder }
+  if (state.apiKeyConfigured) return { key: 'oauthConnectedViaApiKey', color: colors.okText, border: colors.okBorder }
+  return { key: 'oauthNotConnected', color: colors.muted, border: colors.cardBorder }
 }
 
 export function XmemoCard(props: XmemoCardProps) {
@@ -98,6 +101,9 @@ export function XmemoCard(props: XmemoCardProps) {
               <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>
                 {state.oauthWritable ? t('oauthHint') : t('oauthReadOnlyEnv')}
               </p>
+              {state.oauthConnected && state.apiKeyConfigured
+                ? <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>{t('oauthBothConfiguredNote')}</p>
+                : null}
               {state.oauthConnecting ? <p style={{ color: colors.accent, fontSize: 13, margin: 0 }} role="status">{t('oauthConnecting')}</p> : null}
               {state.oauthDisconnecting ? <p style={{ color: colors.accent, fontSize: 13, margin: 0 }} role="status">{t('oauthDisconnecting')}</p> : null}
               {state.oauthTimedOut ? <p style={{ color: colors.danger, fontSize: 13, margin: 0 }} role="status">{t('oauthTimedOut')}</p> : null}

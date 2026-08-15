@@ -49,9 +49,11 @@ XMemo's hosted MCP server (`https://xmemo.dev/mcp`), this plugin talks directly 
 REST API (the actual backend behind XMemo) and keeps its own local store — the same architecture as
 the Cindy plugin, just ported to Cordis/TypeScript. (dsh could also reach XMemo the MCP way, via the
 harness's own `@deepseek-ai/dsh-mcp-client` bridge — this repo is the deeper, native alternative.)
-Endpoint paths, request/response field names, and the auth header were verified against the MemoryOS
-source, not guessed from another client — including live, end-to-end verification of the OAuth flow
-against production `xmemo.dev`.
+[hermes-xmemo-plugin](https://github.com/yonro/hermes-xmemo-plugin) and
+[xmemo-openclaw-memory](https://github.com/yonro/xmemo-openclaw-memory) follow the same native,
+REST-direct pattern for their own hosts. Endpoint paths, request/response field names, and the auth
+header were verified against the MemoryOS source, not guessed from another client — including live,
+end-to-end verification of the OAuth flow against production `xmemo.dev`.
 
 > [!NOTE]
 > DeepSeek Harness itself is a developer preview. This plugin has been exercised locally against
@@ -181,14 +183,16 @@ loaded plugin's `package.json` for that field, not just first-party ones).
 Three controls are genuinely live:
 
 - **XMemo account login** (recommended, shown first) — Connect/Disconnect buttons driving the OAuth
-  flow described in [Auth](#auth). Its status badge reads `已连接`/Connected whenever *either* OAuth
-  or the API key is set up — matching `auth.ts`'s own "OAuth first, API key fallback" precedence —
-  and only falls back to `未连接`/Not connected when neither is configured, so a working API-key
-  setup never reads as broken just because OAuth hasn't been connected. Since this card has no
-  direct RPC into host-side code (the same `credentials.*`-only constraint below), the buttons relay
-  through the write-only `XMEMO_OAUTH_ACTION` signal credential rather than calling anything
-  directly, then poll `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes) to detect
-  when the browser login completes.
+  flow described in [Auth](#auth). Its status badge names whichever method is actually in effect —
+  `已连接 · OAuth`/`Connected · OAuth` or `已连接 · API Key`/`Connected · API key` — mirroring
+  `auth.ts`'s own "OAuth first, API key fallback" precedence exactly, and only falls back to
+  `未连接`/Not connected when neither is configured, so a working API-key setup never reads as
+  broken just because OAuth hasn't been connected. When both happen to be configured at once, a
+  short note under the button says so and states that OAuth is the one actually being used. Since
+  this card has no direct RPC into host-side code (the same `credentials.*`-only constraint below),
+  the buttons relay through the write-only `XMEMO_OAUTH_ACTION` signal credential rather than
+  calling anything directly, then poll `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5
+  minutes) to detect when the browser login completes.
 - **API key** (compatibility fallback) — reflects and can change the actual stored key via real
   `credentials.describe`/`credentials.set` calls, including correctly showing it as read-only when
   `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.
@@ -347,7 +351,9 @@ npm test               # node --test over tests/*.spec.ts
 - DeepSeek Harness: https://github.com/deepseek-ai/deepseek-harness
 - Sibling plugins: [Cindy](https://github.com/yonro/xmemo-cindy-plugin) ·
   [Claude](https://github.com/yonro/xmemo-claude-plugin) ·
-  [Codex](https://github.com/yonro/xmemo-codex-plugin)
+  [Codex](https://github.com/yonro/xmemo-codex-plugin) ·
+  [Hermes Agent](https://github.com/yonro/hermes-xmemo-plugin) ·
+  [OpenClaw](https://github.com/yonro/xmemo-openclaw-memory)
 
 ## License
 

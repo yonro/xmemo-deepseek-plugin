@@ -13,9 +13,11 @@ export type XmemoLocaleKey =
   | 'collapse'
   | 'oauthLabel'
   | 'oauthRecommendedBadge'
-  | 'oauthConnected'
+  | 'oauthConnectedViaOAuth'
+  | 'oauthConnectedViaApiKey'
   | 'oauthNotConnected'
   | 'oauthHint'
+  | 'oauthBothConfiguredNote'
   | 'oauthConnectButton'
   | 'oauthDisconnectButton'
   | 'oauthConnecting'
@@ -49,9 +51,11 @@ export const zh: Record<XmemoLocaleKey, string> = {
   collapse: '收起',
   oauthLabel: 'XMemo 账号登录',
   oauthRecommendedBadge: '推荐',
-  oauthConnected: '已连接',
+  oauthConnectedViaOAuth: '已连接 · OAuth',
+  oauthConnectedViaApiKey: '已连接 · API Key',
   oauthNotConnected: '未连接',
   oauthHint: '点击后会打开浏览器完成 XMemo 登录；连接后将优先使用此账号，无需再配置下方 API Key。',
+  oauthBothConfiguredNote: 'OAuth 与 API Key 均已配置，当前优先使用 OAuth 登录。',
   oauthConnectButton: '连接 XMemo 账号',
   oauthDisconnectButton: '断开连接',
   oauthConnecting: '已打开浏览器，请在其中完成登录……',
@@ -86,10 +90,12 @@ export const en: Record<XmemoLocaleKey, string> = {
   collapse: 'Collapse',
   oauthLabel: 'XMemo account login',
   oauthRecommendedBadge: 'Recommended',
-  oauthConnected: 'Connected',
+  oauthConnectedViaOAuth: 'Connected · OAuth',
+  oauthConnectedViaApiKey: 'Connected · API key',
   oauthNotConnected: 'Not connected',
   oauthHint: 'Opens a browser to sign in to XMemo. Once connected, this account is used automatically '
     + '— no need to set the API key below.',
+  oauthBothConfiguredNote: 'Both OAuth and an API key are set up — OAuth takes priority right now.',
   oauthConnectButton: 'Connect XMemo account',
   oauthDisconnectButton: 'Disconnect',
   oauthConnecting: 'Browser opened — finish signing in there…',
