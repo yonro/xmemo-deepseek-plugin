@@ -12,17 +12,19 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { CredentialsApi, MemoryMode } from './card-controller.ts'
+import type { CredentialsApi, MemoryMode, XmemoCardControllerRefs } from './card-controller.ts'
 import { XmemoCardController } from './card-controller.ts'
 import { en, XMEMO_LOCALE_NS, zh } from './locales.ts'
 import { XmemoCard } from './XmemoCard.tsx'
 
-/** Credential reference this card manages; matches src/config.ts's apiKeyCredential default. */
-const DEFAULT_API_KEY_REF = 'XMEMO_KEY'
-/** Credential reference the mode selector saves to; matches src/mode.ts's `credentialRef('XMEMO_MODE')`. */
-const DEFAULT_MODE_REF = 'XMEMO_MODE'
-/** Matches src/config.ts's `mode` schema default — the value the select shows until a save overrides it. */
-const DEFAULT_MODE: MemoryMode = 'hybrid'
+/** Credential refs this card manages; must match src/config.ts and src/oauth.ts's own constants exactly. */
+const REFS: XmemoCardControllerRefs = {
+  apiKeyRef: 'XMEMO_KEY',
+  modeRef: 'XMEMO_MODE',
+  defaultMode: 'hybrid' satisfies MemoryMode,
+  oauthBundleRef: 'XMEMO_OAUTH',
+  oauthActionRef: 'XMEMO_OAUTH_ACTION',
+}
 
 interface SlotRegistration {
   name: string
@@ -58,7 +60,7 @@ export const inject = ['slots', 'locale', 'connection']
 
 export function apply(ctx: Context): void {
   ctx.locale.register(XMEMO_LOCALE_NS, { zh, en })
-  const controller = new XmemoCardController(ctx.connection.api.credentials, DEFAULT_API_KEY_REF, DEFAULT_MODE_REF, DEFAULT_MODE)
+  const controller = new XmemoCardController(ctx.connection.api.credentials, REFS)
   ctx.slots.inject('settings.plugin.item', () => ctx.slots.register(
     { name: 'settings.plugin.item', id: 'xmemo', order: 100, locale: XMEMO_LOCALE_NS, inject: () => controller.inject() },
     XmemoCard,

@@ -1,18 +1,19 @@
 /**
  * Native DeepSeek Harness (dsh) plugin for XMemo: hybrid local + cloud memory, ported from
- * xmemo-cindy-plugin. See README for architecture notes and known limitations (API-key-only auth,
- * no encryption at rest, single in-process store lock).
+ * xmemo-cindy-plugin. See README for architecture notes and known limitations (OAuth vs. API-key
+ * precedence, no encryption at rest, single in-process store lock).
  * @module dsh-xmemo
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-tools'
-import { createApiKeyResolver } from './auth.ts'
+import { createAuthResolver } from './auth.ts'
 import type { Config } from './config.ts'
 import { createApiClient } from './http.ts'
 import { loadOrCreateInstanceId } from './identity.ts'
 import { createModeResolver } from './mode.ts'
+import { createOAuthManager } from './oauth.ts'
 import { defaultDataDir, LocalStore } from './store.ts'
 import { registerCreateDecisionTool, registerListDecisionsTool, registerResolveDecisionTool } from './tools/decisions.ts'
 import { registerForgetTool } from './tools/forget.ts'
@@ -46,8 +47,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const dataDir = defaultDataDir()
   const localStore = new LocalStore(dataDir)
   const instanceId = await loadOrCreateInstanceId(dataDir)
-  const resolveApiKey = createApiKeyResolver(ctx, config)
-  const api = createApiClient(config, resolveApiKey, instanceId)
+  const oauth = createOAuthManager(ctx, config)
+  const resolveAuth = createAuthResolver(ctx, config, oauth)
+  const api = createApiClient(config, resolveAuth, instanceId)
   const resolveMode = createModeResolver(ctx, config)
 
   const deps: ToolDeps = { api, localStore, resolveMode, config }

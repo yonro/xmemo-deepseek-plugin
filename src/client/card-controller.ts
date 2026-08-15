@@ -19,6 +19,12 @@
  * client packages we intentionally do not depend on, to keep this bundle's external surface small
  * and avoid another out-of-tree version-skew fight) — only the exact runtime shape this file calls
  * matters, verified against the live GUI rather than against those packages' own type exports.
+ *
+ * OAuth connect/disconnect follows the same "no RPC surface beyond credentials.*" constraint: this
+ * card cannot invoke host-side code directly, so it relays through a write-only signal credential
+ * (`oauthActionRef`, `XMEMO_OAUTH_ACTION`) that src/oauth.ts listens for via `credentials/updated`.
+ * After signaling, the only way to observe progress is polling `describe(oauthBundleRef)` — the same
+ * describe-only, value-never limitation the mode control already works within.
  */
 
 export type MemoryMode = 'hybrid' | 'local-only' | 'cloud-only'
@@ -40,6 +46,33 @@ export interface CredentialsApi {
     | { result: { ok: false; error?: unknown } }
   >
   set(args: { ref: string; value: string }): Promise<{ result: { ok: boolean; error?: unknown } } | void>
+}
+
+export interface XmemoCardControllerRefs {
+  apiKeyRef: string
+  modeRef: string
+  defaultMode: MemoryMode
+  oauthBundleRef: string
+  oauthActionRef: string
+}
+
+/** Client-side nonce so a repeated identical action (e.g. two "connect" clicks) still updates the signal ref. */
+function actionNonce(): string {
+  return Math.random().toString(36).slice(2)
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/** Poll `check` until it reports done or `timeoutMs` elapses; returns whether it completed in time. */
+async function pollUntil(check: () => Promise<boolean>, intervalMs: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    if (await check()) return true
+    if (Date.now() >= deadline) return false
+    await wait(intervalMs)
+  }
 }
 
 /** Snapshot store shape the slot renderer binds a `use<Name>` hook from (matches the harness's own `hooks` compartment convention). */
@@ -82,6 +115,11 @@ export interface XmemoCardState {
   modeSaving: boolean
   modeSaved: boolean
   modeFailed: boolean
+  oauthConnected: boolean
+  oauthWritable: boolean
+  oauthConnecting: boolean
+  oauthDisconnecting: boolean
+  oauthTimedOut: boolean
 }
 
 export interface XmemoCardFace {
@@ -91,7 +129,16 @@ export interface XmemoCardFace {
   discard: () => void
   editMode: (value: string) => void
   saveMode: () => void
+  connectOAuth: () => void
+  disconnectOAuth: () => void
 }
+
+/** Client-observable budget for a browser-login round trip; kept slightly above oauth.ts's own 5-minute host-side timeout. */
+const CONNECT_POLL_TIMEOUT_MS = 5.5 * 60 * 1000
+const CONNECT_POLL_INTERVAL_MS = 2_000
+/** Disconnect never waits on a human — just a local revoke + unset round trip. */
+const DISCONNECT_POLL_TIMEOUT_MS = 15_000
+const DISCONNECT_POLL_INTERVAL_MS = 1_000
 
 export class XmemoCardController {
   private readonly store: Store<XmemoCardState>
@@ -104,17 +151,25 @@ export class XmemoCardController {
   private modeSaving = false
   private modeSaved = false
   private modeFailed = false
+  private oauthCredential: CredentialDescriptor = { configured: false, writable: true }
+  private oauthConnecting = false
+  private oauthDisconnecting = false
+  private oauthTimedOut = false
+  private readonly ref: string
+  private readonly modeRef: string
+  private readonly oauthBundleRef: string
+  private readonly oauthActionRef: string
 
-  constructor(
-    private readonly api: CredentialsApi,
-    private readonly ref: string,
-    private readonly modeRef: string,
-    defaultMode: MemoryMode,
-  ) {
-    this.mode = defaultMode
+  constructor(private readonly api: CredentialsApi, refs: XmemoCardControllerRefs) {
+    this.ref = refs.apiKeyRef
+    this.modeRef = refs.modeRef
+    this.mode = refs.defaultMode
+    this.oauthBundleRef = refs.oauthBundleRef
+    this.oauthActionRef = refs.oauthActionRef
     this.store = new Store(this.projection())
     void this.readCredential()
     void this.readModeCredential()
+    void this.readOAuthCredential()
   }
 
   private projection(): XmemoCardState {
@@ -131,6 +186,11 @@ export class XmemoCardController {
       modeSaving: this.modeSaving,
       modeSaved: this.modeSaved,
       modeFailed: this.modeFailed,
+      oauthConnected: this.oauthCredential.configured,
+      oauthWritable: this.oauthCredential.writable,
+      oauthConnecting: this.oauthConnecting,
+      oauthDisconnecting: this.oauthDisconnecting,
+      oauthTimedOut: this.oauthTimedOut,
     }
   }
 
@@ -222,6 +282,71 @@ export class XmemoCardController {
     })()
   }
 
+  private async readOAuthCredential(): Promise<void> {
+    let response: Awaited<ReturnType<CredentialsApi['describe']>>
+    try {
+      response = await this.api.describe({ refs: [this.oauthBundleRef] })
+    } catch {
+      return
+    }
+    if (!response.result.ok) return
+    const view = response.result.value.credentials[this.oauthBundleRef]
+    this.oauthCredential = { configured: view?.configured ?? false, writable: view?.writable ?? true }
+    this.publish()
+  }
+
+  connectOAuth = (): void => {
+    if (this.oauthConnecting || this.oauthDisconnecting) return
+    this.oauthConnecting = true
+    this.oauthTimedOut = false
+    this.publish()
+    void (async () => {
+      try {
+        await this.api.set({ ref: this.oauthActionRef, value: `connect:${actionNonce()}` })
+      } catch {
+        this.oauthConnecting = false
+        this.publish()
+        return
+      }
+      const completed = await pollUntil(
+        async () => {
+          await this.readOAuthCredential()
+          return this.oauthCredential.configured
+        },
+        CONNECT_POLL_INTERVAL_MS,
+        CONNECT_POLL_TIMEOUT_MS,
+      )
+      this.oauthConnecting = false
+      this.oauthTimedOut = !completed
+      this.publish()
+    })()
+  }
+
+  disconnectOAuth = (): void => {
+    if (this.oauthConnecting || this.oauthDisconnecting || !this.oauthCredential.configured) return
+    this.oauthDisconnecting = true
+    this.publish()
+    void (async () => {
+      try {
+        await this.api.set({ ref: this.oauthActionRef, value: `disconnect:${actionNonce()}` })
+      } catch {
+        this.oauthDisconnecting = false
+        this.publish()
+        return
+      }
+      await pollUntil(
+        async () => {
+          await this.readOAuthCredential()
+          return !this.oauthCredential.configured
+        },
+        DISCONNECT_POLL_INTERVAL_MS,
+        DISCONNECT_POLL_TIMEOUT_MS,
+      )
+      this.oauthDisconnecting = false
+      this.publish()
+    })()
+  }
+
   inject(): XmemoCardFace {
     return {
       hooks: { xmemoCard: this.store },
@@ -230,6 +355,8 @@ export class XmemoCardController {
       discard: this.discard,
       editMode: this.editMode,
       saveMode: this.saveMode,
+      connectOAuth: this.connectOAuth,
+      disconnectOAuth: this.disconnectOAuth,
     }
   }
 }

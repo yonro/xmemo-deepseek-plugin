@@ -24,7 +24,7 @@ dsh plugin --profile <name> add dsh-xmemo
 dsh plugin --profile <name> add ./xmemo-deepseek-plugin
 ```
 
-Set an XMemo API key (see [Auth](#auth) below), then verify the row loaded:
+Connect an XMemo account or set an API key (see [Auth](#auth) below), then verify the row loaded:
 
 ```sh
 dsh --profile <name> --dump-config   # look for "# == dsh-xmemo"
@@ -32,16 +32,32 @@ dsh --profile <name> --dump-config   # look for "# == dsh-xmemo"
 
 ## Auth
 
-v1 supports **API key auth only** (see [Known Limitations](#known-limitations) for why OAuth isn't
-here yet). Set the `XMEMO_KEY` credential through dsh's own credential seam — any of:
+Two methods, resolved in this order on every request (`src/auth.ts`) — never both at once:
 
-- an environment variable: `XMEMO_KEY=... dsh --profile <name>`
-- `$DSH_HOME/.credentials.yaml`: `XMEMO_KEY: ...`
-- `<project>/.env` or `$DSH_HOME/.env`
+1. **OAuth 2.1 + PKCE** (recommended). Connect from the web GUI's plugin card (see
+   [Web GUI card](#web-gui-card)) or trigger it programmatically by writing a
+   `connect:<anything>` value to the `XMEMO_OAUTH_ACTION` credential — `src/oauth.ts` listens for
+   this via the seam-wide `credentials/updated` event. Connecting: registers a fresh public OAuth
+   client through MemoryOS's Dynamic Client Registration (`POST /oauth/register`, one per connect
+   attempt — cheap, and avoids caching a client_id with its own staleness edge cases), opens your
+   default browser to `/oauth/authorize` with a PKCE challenge, and runs a temporary
+   `127.0.0.1:<ephemeral-port>` HTTP listener as the redirect target — the same loopback-native-app
+   pattern MemoryOS documents for Cindy's desktop OAuth flow (verified live against production
+   `xmemo.dev`: DCR accepts a brand-new client's loopback `redirect_uri`, and `/oauth/authorize`
+   accepts that client_id + PKCE + explicit `resource` end to end). The resulting access/refresh
+   token pair is stored under the `XMEMO_OAUTH` credential reference and refreshed automatically
+   (with rotation — a used refresh token is never replayed) a minute before it expires. Disconnect
+   the same way with a `disconnect:<anything>` value, which also revokes both tokens server-side.
+2. **Static API key** (fallback). Set the `XMEMO_KEY` credential through dsh's own credential seam
+   — any of an environment variable (`XMEMO_KEY=... dsh --profile <name>`),
+   `$DSH_HOME/.credentials.yaml` (`XMEMO_KEY: ...`), or `<project>/.env` / `$DSH_HOME/.env`. Sent as
+   the `X-API-Key` header (MemoryOS's primary auth header — `Authorization: Bearer` is only its
+   fallback; see `auth/api_key.py`). The credential reference name is configurable
+   (`apiKeyCredential` in `cordis.patch.yml`) if you'd rather not use `XMEMO_KEY`.
 
-Sent as the `X-API-Key` header (MemoryOS's primary auth header — `Authorization: Bearer` is only
-its fallback; see `auth/api_key.py`). The credential reference name is configurable
-(`apiKeyCredential` in `cordis.patch.yml`) if you'd rather not use `XMEMO_KEY`.
+Unlike Cindy, whose *host* runs the OAuth dance generically for any plugin that declares an "OAuth
+credential source," `dsh` has no such primitive (see [Known Limitations](#known-limitations)) — this
+plugin runs the whole flow itself in `src/oauth.ts`, with no deepseek-harness changes required.
 
 ## Config
 
@@ -82,10 +98,17 @@ ships (`src/client/`, built to `lib/client.js`, declared through the `dsh.client
 `package.json` — no changes to deepseek-harness itself are needed; `dsh-client-modules` scans every
 loaded plugin's `package.json` for that field, not just first-party ones).
 
-Two controls are genuinely live, both through real `credentials.describe`/`credentials.set` calls:
+Three controls are genuinely live:
 
-- **API key** — reflects and can change the actual stored key, including correctly showing it as
-  read-only when `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.
+- **XMemo account login** (recommended, shown first) — Connect/Disconnect buttons driving the OAuth
+  flow described in [Auth](#auth). Since this card has no direct RPC into host-side code (the same
+  `credentials.*`-only constraint below), the buttons relay through the write-only
+  `XMEMO_OAUTH_ACTION` signal credential rather than calling anything directly, then poll
+  `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes) to detect when the browser
+  login completes.
+- **API key** (compatibility fallback) — reflects and can change the actual stored key via real
+  `credentials.describe`/`credentials.set` calls, including correctly showing it as read-only when
+  `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.
 - **Memory mode** — a real `<select>` (hybrid / local-only / cloud-only) with an explicit Save
   button, saved under the `XMEMO_MODE` credential reference and picked up by `src/mode.ts` on the
   very next tool call. Unlike the API key field, the select can't show which value is currently
@@ -127,10 +150,19 @@ call. See the comment at the top of `src/outbox.ts`.
 
 ## Known Limitations
 
-- **API key auth only.** OAuth PKCE (like Cindy's host-managed flow) is deferred — it needs its own
-  XMemo-side `client_id` registration (Cindy's `xmemo-cindy` client_id is host-specific) and a
-  loopback redirect listener; `dsh`'s own `dsh-mcp-client` bridge is API-key/static-header-only
-  today too, so this matches the rest of the harness's external-auth story.
+- **OAuth connect needs a desktop with a browser.** The flow opens a system browser and waits on a
+  loopback listener for its redirect; a headless `dsh` instance (no desktop session to open a
+  browser in) can't complete it — use the static API key there instead.
+- **`XMEMO_OAUTH` and `XMEMO_OAUTH_ACTION` appear in `$DSH_HOME/.credentials.yaml` and the Models
+  page's credentials list**, alongside `XMEMO_MODE` — same accepted tradeoff as below, reusing the
+  one channel actually open to an out-of-tree plugin. `XMEMO_OAUTH` holds the access/refresh token
+  pair as an opaque JSON blob; `XMEMO_OAUTH_ACTION` is a transient write-only signal, never holding
+  anything meaningful at rest.
+- **A fresh OAuth client is registered on every connect attempt** rather than cached — Dynamic
+  Client Registration exists precisely for this kind of ad hoc self-registration, and skipping the
+  cache avoids persisting a fourth credential ref with its own staleness edge cases. Each registered
+  client is a self-verifying signed token MemoryOS never has to store server-side, so this has no
+  accumulating cost.
 - **No encryption at rest.** Same as upstream — the Cindy host's storage encryption, if any, was
   opaque to the plugin; this port is honest that there isn't one.
 - **Single in-process store lock.** Concurrent `dsh` processes writing to the same store directory
@@ -139,15 +171,15 @@ call. See the comment at the top of `src/outbox.ts`.
   claim email/phone redaction, but no such code exists in `main.js` either — it's server-side or
   aspirational. This port's tool descriptions say only what the code does.
 - **Replayed writes only back-fill `cloud_id`**, not richer response fields — see Architecture notes.
-- **The web GUI card can only edit `apiKeyCredential` and `mode`; the other five config fields
-  aren't editable from the browser at all.** The harness's generic settings-persistence pipeline
-  (`ctx.settingsScope`) is gated by a hardcoded namespace allowlist in deepseek-harness's own
-  `packages/host/apiproxy/src/api-proxy.ts` (`WEB_SETTINGS_NAMESPACES`) that an out-of-tree plugin
-  cannot extend from its own package (the source comment there calls generalizing it "deferred
-  work"). Only the ungated `credentials.*` RPC is open to third-party plugins today — the same
-  channel `apiKeyCredential` already used for its API key — so `mode` piggybacks on it too (a
-  `XMEMO_MODE` credential reference, resolved by `src/mode.ts`), and the remaining five fields have
-  no open channel to bind to at all.
+- **The web GUI card can only edit OAuth login, `apiKeyCredential`, and `mode`; the other five
+  config fields aren't editable from the browser at all.** The harness's generic
+  settings-persistence pipeline (`ctx.settingsScope`) is gated by a hardcoded namespace allowlist in
+  deepseek-harness's own `packages/host/apiproxy/src/api-proxy.ts` (`WEB_SETTINGS_NAMESPACES`) that
+  an out-of-tree plugin cannot extend from its own package (the source comment there calls
+  generalizing it "deferred work"). Only the ungated `credentials.*` RPC is open to third-party
+  plugins today — the same channel `apiKeyCredential` already used for its API key — so `mode` and
+  OAuth both piggyback on it too (`XMEMO_MODE`, `XMEMO_OAUTH`/`XMEMO_OAUTH_ACTION`), and the
+  remaining five config fields have no open channel to bind to at all.
 - **The mode selector can't show the currently saved value, only whether one has been saved.**
   `credentials.describe` reports `configured`/`writable` but never a credential's value — correct
   for secrets, but it means the mode select can't be pre-filled with the true stored mode the way

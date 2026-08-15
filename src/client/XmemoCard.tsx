@@ -77,6 +77,46 @@ export function XmemoCard(props: XmemoCardProps) {
         ? (
           <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ color: colors.text, fontSize: 13 }}>{t('oauthLabel')}</span>
+                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: colors.accent, border: `1px solid ${colors.accent}` }}>
+                  {t('oauthRecommendedBadge')}
+                </span>
+                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: state.oauthConnected ? colors.okText : colors.muted, border: `1px solid ${state.oauthConnected ? colors.okBorder : colors.cardBorder}` }}>
+                  {t(state.oauthConnected ? 'oauthConnected' : 'oauthNotConnected')}
+                </span>
+              </div>
+              <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>
+                {state.oauthWritable ? t('oauthHint') : t('oauthReadOnlyEnv')}
+              </p>
+              {state.oauthConnecting ? <p style={{ color: colors.accent, fontSize: 13, margin: 0 }} role="status">{t('oauthConnecting')}</p> : null}
+              {state.oauthDisconnecting ? <p style={{ color: colors.accent, fontSize: 13, margin: 0 }} role="status">{t('oauthDisconnecting')}</p> : null}
+              {state.oauthTimedOut ? <p style={{ color: colors.danger, fontSize: 13, margin: 0 }} role="status">{t('oauthTimedOut')}</p> : null}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                {state.oauthConnected
+                  ? (
+                    <button
+                      type="button"
+                      disabled={state.oauthDisconnecting || state.oauthConnecting}
+                      onClick={props.disconnectOAuth}
+                      style={{ background: 'transparent', border: `0.666667px solid ${colors.cardBorder}`, borderRadius: 8, color: colors.text, padding: '5px 12px', fontSize: 13, cursor: 'pointer' }}
+                    >
+                      {t('oauthDisconnectButton')}
+                    </button>
+                  )
+                  : (
+                    <button
+                      type="button"
+                      disabled={state.oauthConnecting || state.oauthDisconnecting || !state.oauthWritable}
+                      onClick={props.connectOAuth}
+                      style={{ background: colors.accent, border: 'none', borderRadius: 8, color: '#fff', padding: '5px 12px', fontSize: 13, cursor: 'pointer' }}
+                    >
+                      {t('oauthConnectButton')}
+                    </button>
+                  )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: `0.666667px solid ${colors.divider}`, paddingTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label htmlFor="xmemo-api-key" style={{ color: colors.text, fontSize: 13 }}>{t('apiKeyLabel')}</label>
                 <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: state.apiKeyConfigured ? colors.okText : colors.muted, border: `1px solid ${state.apiKeyConfigured ? colors.okBorder : colors.cardBorder}` }}>

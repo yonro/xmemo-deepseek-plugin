@@ -5,7 +5,7 @@
  * plugin has no such host, so this module resolves and attaches the bearer token itself (auth.ts).
  */
 
-import type { ApiKeyResolver } from './auth.ts'
+import type { AuthResolver } from './auth.ts'
 import { PluginError } from './types.ts'
 import type { PluginConfig } from './types.ts'
 
@@ -91,11 +91,11 @@ function combineSignals(signals: AbortSignal[]): AbortSignal {
   return controller.signal
 }
 
-export function createApiClient(config: PluginConfig, resolveApiKey: ApiKeyResolver, instanceId: string): ApiClient {
+export function createApiClient(config: PluginConfig, resolveAuth: AuthResolver, instanceId: string): ApiClient {
   return {
     async request<T>(path: string, spec: RequestSpec = {}): Promise<T> {
       const write = spec.write ?? false
-      const apiKey = await resolveApiKey()
+      const auth = await resolveAuth()
       const timeoutMs = spec.timeoutMs ?? config.requestTimeoutMs
       const timeoutSignal = AbortSignal.timeout(timeoutMs)
       const signal = spec.signal ? combineSignals([timeoutSignal, spec.signal]) : timeoutSignal
@@ -106,9 +106,9 @@ export function createApiClient(config: PluginConfig, resolveApiKey: ApiKeyResol
           method: spec.method ?? (spec.body ? 'POST' : 'GET'),
           headers: {
             Accept: 'application/json',
-            // X-API-Key is MemoryOS's primary auth header (auth/api_key.py); Authorization: Bearer
-            // is only its fallback. Sending X-API-Key directly avoids depending on that fallback path.
-            'X-API-Key': apiKey,
+            // A connected OAuth session sends Authorization: Bearer; otherwise X-API-Key, MemoryOS's
+            // primary static-key auth header (auth/api_key.py) — never both (see auth.ts).
+            [auth.header]: auth.value,
             'X-Memory-OS-Agent-ID': config.agentId,
             'X-Memory-OS-Agent-Instance-ID': instanceId,
             ...(spec.body ? { 'Content-Type': 'application/json' } : {}),

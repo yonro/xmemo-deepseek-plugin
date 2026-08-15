@@ -11,6 +11,17 @@ export type XmemoLocaleKey =
   | 'description'
   | 'expand'
   | 'collapse'
+  | 'oauthLabel'
+  | 'oauthRecommendedBadge'
+  | 'oauthConnected'
+  | 'oauthNotConnected'
+  | 'oauthHint'
+  | 'oauthConnectButton'
+  | 'oauthDisconnectButton'
+  | 'oauthConnecting'
+  | 'oauthDisconnecting'
+  | 'oauthTimedOut'
+  | 'oauthReadOnlyEnv'
   | 'apiKeyLabel'
   | 'apiKeyHint'
   | 'apiKeyConfigured'
@@ -36,8 +47,19 @@ export const zh: Record<XmemoLocaleKey, string> = {
   description: '混合本地与 XMemo 云端记忆——远程状态、时间线、TODO、决策与断点续传。',
   expand: '展开',
   collapse: '收起',
-  apiKeyLabel: 'XMemo API Key',
-  apiKeyHint: '写入后立即生效；已保存的值不会在此显示。',
+  oauthLabel: 'XMemo 账号登录',
+  oauthRecommendedBadge: '推荐',
+  oauthConnected: '已连接',
+  oauthNotConnected: '未连接',
+  oauthHint: '点击后会打开系统默认浏览器完成 XMemo 登录（PKCE + OAuth 2.1）。连接成功后将优先使用此登录状态；下方的 API Key 仅作为兼容后备，两者不会同时发送。',
+  oauthConnectButton: '连接 XMemo 账号',
+  oauthDisconnectButton: '断开连接',
+  oauthConnecting: '已打开浏览器，请在其中完成登录……',
+  oauthDisconnecting: '正在断开连接……',
+  oauthTimedOut: '连接超时，可以重试。',
+  oauthReadOnlyEnv: '当前由启动环境变量提供，只读——在此处修改不会生效。',
+  apiKeyLabel: 'API Key（兼容）',
+  apiKeyHint: '写入后立即生效；已保存的值不会在此显示。未连接 OAuth 账号时用作后备认证方式。',
   apiKeyConfigured: '已配置',
   apiKeyNotConfigured: '未配置',
   apiKeyReadOnlyEnv: '当前由启动环境变量提供，只读——在此处修改不会生效，请改动进程环境变量后重启。',
@@ -62,8 +84,20 @@ export const en: Record<XmemoLocaleKey, string> = {
   description: 'Hybrid local + XMemo cloud memory — state, timeline, TODOs, decisions, restart snapshots.',
   expand: 'Expand',
   collapse: 'Collapse',
-  apiKeyLabel: 'XMemo API Key',
-  apiKeyHint: 'Takes effect immediately once saved; a previously stored value never shows here.',
+  oauthLabel: 'XMemo account login',
+  oauthRecommendedBadge: 'Recommended',
+  oauthConnected: 'Connected',
+  oauthNotConnected: 'Not connected',
+  oauthHint: "Opens your default browser to sign in to XMemo (PKCE + OAuth 2.1). Once connected this "
+    + "is used automatically; the API key below is only a compatibility fallback — never sent alongside it.",
+  oauthConnectButton: 'Connect XMemo account',
+  oauthDisconnectButton: 'Disconnect',
+  oauthConnecting: 'Browser opened — finish signing in there…',
+  oauthDisconnecting: 'Disconnecting…',
+  oauthTimedOut: 'Connection timed out — you can retry.',
+  oauthReadOnlyEnv: 'Currently supplied by the launch environment — read-only here.',
+  apiKeyLabel: 'API Key (compatibility)',
+  apiKeyHint: 'Takes effect immediately once saved; a previously stored value never shows here. Used as a fallback when no OAuth account is connected.',
   apiKeyConfigured: 'Configured',
   apiKeyNotConfigured: 'Not configured',
   apiKeyReadOnlyEnv: 'Currently supplied by the launch environment — read-only here; edit the process environment and restart to change it.',
