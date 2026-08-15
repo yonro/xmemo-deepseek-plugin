@@ -169,7 +169,7 @@ mode selector reaches the very next tool call without a restart.
 `xmemo_recall`, `xmemo_forget`, `xmemo_create_todo`, `xmemo_list_todos`, `xmemo_complete_todo`,
 `xmemo_create_decision`, `xmemo_list_decisions`, `xmemo_resolve_decision`, `xmemo_save_progress`,
 `xmemo_restore_progress`, `xmemo_sync` — same names, schemas, and behavior as
-`xmemo-cindy-plugin`'s `ghost.json`.
+`xmemo-cindy-plugin`'s tool surface.
 
 | Area | Tools |
 |---|---|
@@ -354,7 +354,7 @@ npm test               # node --test over tests/*.spec.ts
 | Backend | MemoryOS REST API (not MCP) |
 | Authentication | OAuth 2.1 + PKCE (recommended), or static API key via `XMEMO_KEY` |
 | OAuth scopes | `memory:read memory:write` |
-| Tool profile | 16 tools, same contract as `xmemo-cindy-plugin`'s `ghost.json` |
+| Tool profile | 16 tools, same names/schemas as `xmemo-cindy-plugin` |
 | Local storage | Yes — JSON hybrid store with a durable outbox, not encrypted |
 | Repository | `https://github.com/yonro/xmemo-deepseek-plugin` |
 | License | MIT |
