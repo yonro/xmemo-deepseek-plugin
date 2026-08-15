@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import type { XmemoCardFace, XmemoCardState } from './card-controller.ts'
+import { OTHER_FIELDS } from './locales.ts'
 import type { XmemoLocaleKey } from './locales.ts'
 
 export interface XmemoCardProps extends XmemoCardFace {
@@ -20,14 +21,7 @@ export interface XmemoCardProps extends XmemoCardFace {
   useXmemoCard: (selector: (state: XmemoCardState) => XmemoCardState) => XmemoCardState
 }
 
-const OTHER_FIELD_KEYS: XmemoLocaleKey[] = [
-  'fieldMode',
-  'fieldApiBaseUrl',
-  'fieldDefaultScope',
-  'fieldAgentId',
-  'fieldRequestTimeoutMs',
-  'fieldLongRequestTimeoutMs',
-]
+const MONOSPACE = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
 
 /** Matches the live GUI's own tokens exactly (see module comment) — not an approximation. */
 const colors = {
@@ -37,6 +31,7 @@ const colors = {
   muted: 'rgb(173, 178, 184)',
   divider: 'rgba(255, 255, 255, 0.12)',
   inputBg: 'rgba(0, 0, 0, 0.25)',
+  keyBg: 'rgba(255, 255, 255, 0.07)',
   accent: '#5b8def',
   danger: '#e5626b',
   okBorder: '#2f5c3d',
@@ -127,14 +122,33 @@ export function XmemoCard(props: XmemoCardProps) {
                 </button>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: `0.666667px solid ${colors.divider}`, paddingTop: 12 }}>
-              <span style={{ color: colors.text, fontSize: 13, fontWeight: 600 }}>{t('otherFieldsTitle')}</span>
-              <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>{t('otherFieldsHint')}</p>
-              <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {OTHER_FIELD_KEYS.map(key => (
-                  <li key={key} style={{ color: colors.muted, fontSize: 13 }}>{t(key)}</li>
+            <div style={{ display: 'flex', flexDirection: 'column', borderTop: `0.666667px solid ${colors.divider}`, paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ color: colors.text, fontSize: 13, fontWeight: 600 }}>{t('otherFieldsTitle')}</span>
+                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: colors.muted, border: `1px solid ${colors.cardBorder}` }}>
+                  {t('otherFieldsReadOnlyBadge')}
+                </span>
+              </div>
+              <p style={{ color: colors.muted, fontSize: 13, margin: '0 0 4px' }}>{t('otherFieldsHint')}</p>
+              <div>
+                {OTHER_FIELDS.map((field, index) => (
+                  <div
+                    key={field.key}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0',
+                      borderTop: index === 0 ? 'none' : `0.666667px solid ${colors.divider}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <code style={{ fontFamily: MONOSPACE, fontSize: 12, color: colors.text, background: colors.keyBg, padding: '2px 6px', borderRadius: 4 }}>
+                        {field.key}
+                      </code>
+                      <code style={{ fontFamily: MONOSPACE, fontSize: 12, color: colors.muted }}>{field.defaultValue}</code>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: colors.muted }}>{t(field.descriptionKey)}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         )

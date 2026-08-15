@@ -22,13 +22,14 @@ export type XmemoLocaleKey =
   | 'saveFailed'
   | 'unsaved'
   | 'otherFieldsTitle'
+  | 'otherFieldsReadOnlyBadge'
   | 'otherFieldsHint'
-  | 'fieldMode'
-  | 'fieldApiBaseUrl'
-  | 'fieldDefaultScope'
-  | 'fieldAgentId'
-  | 'fieldRequestTimeoutMs'
-  | 'fieldLongRequestTimeoutMs'
+  | 'fieldModeDesc'
+  | 'fieldApiBaseUrlDesc'
+  | 'fieldDefaultScopeDesc'
+  | 'fieldAgentIdDesc'
+  | 'fieldRequestTimeoutMsDesc'
+  | 'fieldLongRequestTimeoutMsDesc'
 
 export const zh: Record<XmemoLocaleKey, string> = {
   title: 'XMemo',
@@ -45,14 +46,15 @@ export const zh: Record<XmemoLocaleKey, string> = {
   discard: '放弃修改',
   saveFailed: '保存失败，请重试。',
   unsaved: '有未保存的修改',
-  otherFieldsTitle: '其他配置项（只读）',
-  otherFieldsHint: '以下字段通过插件的 cordis.patch.yml 配置，当前面板不支持在线修改；括号内为默认值。',
-  fieldMode: 'mode（hybrid｜local-only｜cloud-only）：本地/云端写入策略',
-  fieldApiBaseUrl: 'apiBaseUrl（https://xmemo.dev）：MemoryOS API 地址',
-  fieldDefaultScope: 'defaultScope（dsh）：未指定 scope 时的默认值',
-  fieldAgentId: 'agentId（dsh）：X-Memory-OS-Agent-ID 请求头',
-  fieldRequestTimeoutMs: 'requestTimeoutMs（30000）：默认请求超时（毫秒）',
-  fieldLongRequestTimeoutMs: 'longRequestTimeoutMs（60000）：recall/restore 超时（毫秒）',
+  otherFieldsTitle: '其他配置项',
+  otherFieldsReadOnlyBadge: '只读',
+  otherFieldsHint: '通过插件的 cordis.patch.yml 配置；下方为字段名、默认值与作用。',
+  fieldModeDesc: '本地/云端写入策略',
+  fieldApiBaseUrlDesc: 'MemoryOS API 地址',
+  fieldDefaultScopeDesc: '未指定 scope 时的默认值',
+  fieldAgentIdDesc: 'X-Memory-OS-Agent-ID 请求头',
+  fieldRequestTimeoutMsDesc: '默认请求超时（毫秒）',
+  fieldLongRequestTimeoutMsDesc: 'recall / restore 超时（毫秒）',
 }
 
 export const en: Record<XmemoLocaleKey, string> = {
@@ -70,12 +72,29 @@ export const en: Record<XmemoLocaleKey, string> = {
   discard: 'Discard',
   saveFailed: 'Save failed — try again.',
   unsaved: 'Unsaved changes',
-  otherFieldsTitle: 'Other configuration (read-only)',
-  otherFieldsHint: "These fields are set in the plugin's cordis.patch.yml; this panel does not edit them live. Defaults shown in parentheses.",
-  fieldMode: 'mode (hybrid | local-only | cloud-only): local/cloud write policy',
-  fieldApiBaseUrl: 'apiBaseUrl (https://xmemo.dev): MemoryOS API base URL',
-  fieldDefaultScope: 'defaultScope (dsh): default scope when a call omits one',
-  fieldAgentId: 'agentId (dsh): X-Memory-OS-Agent-ID header value',
-  fieldRequestTimeoutMs: 'requestTimeoutMs (30000): default request timeout (ms)',
-  fieldLongRequestTimeoutMs: 'longRequestTimeoutMs (60000): recall/restore timeout (ms)',
+  otherFieldsTitle: 'Other configuration',
+  otherFieldsReadOnlyBadge: 'Read-only',
+  otherFieldsHint: "Set in the plugin's cordis.patch.yml; field, default, and purpose below.",
+  fieldModeDesc: 'Local/cloud write policy',
+  fieldApiBaseUrlDesc: 'MemoryOS API base URL',
+  fieldDefaultScopeDesc: 'Default scope when a call omits one',
+  fieldAgentIdDesc: 'X-Memory-OS-Agent-ID header value',
+  fieldRequestTimeoutMsDesc: 'Default request timeout (ms)',
+  fieldLongRequestTimeoutMsDesc: 'recall/restore timeout (ms)',
 }
+
+/** Field identifiers and their defaults are config syntax, not prose — kept out of the locale dictionaries. */
+export interface OtherFieldSpec {
+  key: string
+  defaultValue: string
+  descriptionKey: XmemoLocaleKey
+}
+
+export const OTHER_FIELDS: OtherFieldSpec[] = [
+  { key: 'mode', defaultValue: 'hybrid | local-only | cloud-only', descriptionKey: 'fieldModeDesc' },
+  { key: 'apiBaseUrl', defaultValue: 'https://xmemo.dev', descriptionKey: 'fieldApiBaseUrlDesc' },
+  { key: 'defaultScope', defaultValue: 'dsh', descriptionKey: 'fieldDefaultScopeDesc' },
+  { key: 'agentId', defaultValue: 'dsh', descriptionKey: 'fieldAgentIdDesc' },
+  { key: 'requestTimeoutMs', defaultValue: '30000', descriptionKey: 'fieldRequestTimeoutMsDesc' },
+  { key: 'longRequestTimeoutMs', defaultValue: '60000', descriptionKey: 'fieldLongRequestTimeoutMsDesc' },
+]
