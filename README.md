@@ -1,4 +1,41 @@
-# dsh-xmemo
+<div align="center">
+  <a href="https://xmemo.dev">
+    <img src="https://cdn.jsdelivr.net/gh/yonro/xmemo-claude-plugin@main/assets/icon.png" alt="XMemo" width="112" />
+  </a>
+
+  <h1>XMemo for DeepSeek Harness</h1>
+
+  <p><strong>Native local-first + cloud memory for <code>dsh</code>.</strong></p>
+  <p>
+    Hybrid local storage with an offline durable write queue, plus real OAuth 2.1
+    login — reimplemented as an ordinary Cordis plugin instead of a thin MCP bridge.
+  </p>
+
+  <p>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/yonro/xmemo-deepseek-plugin?style=flat-square" /></a>
+    <img alt="Plugin version" src="https://img.shields.io/badge/plugin-v0.1.0-8B5CF6?style=flat-square" />
+    <a href="https://github.com/yonro/xmemo-deepseek-plugin/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/yonro/xmemo-deepseek-plugin?style=flat-square&amp;logo=github" /></a>
+  </p>
+
+  <p>
+    <img alt="Native Cordis plugin" src="https://img.shields.io/badge/dsh-native%20Cordis%20plugin-06B6D4?style=flat-square" />
+    <img alt="REST, not MCP" src="https://img.shields.io/badge/backend-MemoryOS%20REST-334155?style=flat-square" />
+    <img alt="OAuth 2.1 + PKCE" src="https://img.shields.io/badge/auth-OAuth%202.1%20%2B%20PKCE-10B981?style=flat-square" />
+    <img alt="Local + cloud memory" src="https://img.shields.io/badge/memory-local--first%20%2B%20cloud-6E56CF?style=flat-square" />
+  </p>
+
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#auth">Auth</a> ·
+    <a href="#config">Config</a> ·
+    <a href="#web-gui-card">Web GUI card</a> ·
+    <a href="#tools">Tools</a> ·
+    <a href="#capabilities-and-boundaries">Capabilities</a> ·
+    <a href="#known-limitations">Limitations</a>
+  </p>
+</div>
+
+---
 
 A native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) plugin: hybrid
 local + [XMemo](https://xmemo.dev) cloud memory, with offline durable write queuing, active state,
@@ -9,14 +46,48 @@ Cordis plugin instead of going through Cindy's host-specific plugin protocol.
 Unlike [xmemo-claude-plugin](https://github.com/yonro/xmemo-claude-plugin) and
 [xmemo-codex-plugin](https://github.com/yonro/xmemo-codex-plugin), which are thin wrappers around
 XMemo's hosted MCP server (`https://xmemo.dev/mcp`), this plugin talks directly to the **MemoryOS**
-REST API (the actual backend behind XMemo — source at `D:\repos\memory-os`, package
-`memory_manager`) and keeps its own local store — the same architecture as the Cindy plugin, just
-ported to Cordis/TypeScript. (dsh could also reach XMemo the MCP way, via the harness's own
-`@deepseek-ai/dsh-mcp-client` bridge — this repo is the deeper, native alternative.) Endpoint paths,
-request/response field names, and the auth header were verified against the MemoryOS source, not
-guessed from another client.
+REST API (the actual backend behind XMemo) and keeps its own local store — the same architecture as
+the Cindy plugin, just ported to Cordis/TypeScript. (dsh could also reach XMemo the MCP way, via the
+harness's own `@deepseek-ai/dsh-mcp-client` bridge — this repo is the deeper, native alternative.)
+Endpoint paths, request/response field names, and the auth header were verified against the MemoryOS
+source, not guessed from another client — including live, end-to-end verification of the OAuth flow
+against production `xmemo.dev`.
 
-## Install
+> [!NOTE]
+> DeepSeek Harness itself is a developer preview. This plugin has been exercised locally against
+> production `xmemo.dev` (unit tests, a live web GUI session, and a real OAuth registration +
+> authorize round trip) but has not seen broad multi-user usage yet.
+
+## At a glance
+
+| | |
+|---|---|
+| Package | `dsh-xmemo` |
+| Plugin ID | `xmemo` |
+| Runtime | DeepSeek Harness (`dsh`) |
+| Version | `0.1.0` |
+| Bundle | Native Cordis plugin (host) + web GUI settings card (browser) |
+| Backend | MemoryOS REST API — `https://xmemo.dev` |
+| Authentication | OAuth 2.1 + PKCE (recommended), or a static API key (compatibility) |
+| Local storage | JSON hybrid store with a durable offline write queue |
+| Tool surface | 16 tools, same names/schemas as `xmemo-cindy-plugin` |
+| License | MIT |
+
+### What it adds
+
+- **Focused recall** — local token-overlap matches merged with cloud recall, fail-closed on any
+  bucket/scope mismatch.
+- **Durable outcomes** — remember decisions, preferences, and facts; record timeline events; track
+  TODOs and decisions.
+- **Working continuity** — active task state and restart snapshots so a session can resume instead
+  of replaying history.
+- **Offline resilience** — every write lands locally first; safe (idempotent) writes replay to the
+  cloud automatically, uncertain ones wait for explicit approval.
+- **Real account login** — OAuth 2.1 + PKCE against XMemo's actual authorization server, not just a
+  pasted API key.
+- **Recoverable deletion** — `xmemo_forget` defaults to a soft, recoverable delete.
+
+## Quick start
 
 ```sh
 dsh plugin --profile <name> add dsh-xmemo
@@ -86,6 +157,15 @@ mode selector reaches the very next tool call without a restart.
 `xmemo_restore_progress`, `xmemo_sync` — same names, schemas, and behavior as
 `xmemo-cindy-plugin`'s `ghost.json`.
 
+| Area | Tools |
+|---|---|
+| Status & sync | `xmemo_status`, `xmemo_sync` |
+| Working state | `xmemo_update_state`, `xmemo_save_progress`, `xmemo_restore_progress` |
+| Timeline | `xmemo_record_event`, `xmemo_list_timeline` |
+| Memory lifecycle | `xmemo_remember`, `xmemo_recall`, `xmemo_forget` |
+| TODOs | `xmemo_create_todo`, `xmemo_list_todos`, `xmemo_complete_todo` |
+| Decisions | `xmemo_create_decision`, `xmemo_list_decisions`, `xmemo_resolve_decision` |
+
 Skill instructions (when to call which tool) are intentionally not part of this package — reuse
 `xmemo-claude-plugin/skills/*/SKILL.md` as-is by dropping them into a project's `.agents/skills/`;
 dsh's `skill-filesystem` provider discovers the same frontmatter format from that directory.
@@ -101,11 +181,15 @@ loaded plugin's `package.json` for that field, not just first-party ones).
 Three controls are genuinely live:
 
 - **XMemo account login** (recommended, shown first) — Connect/Disconnect buttons driving the OAuth
-  flow described in [Auth](#auth). Since this card has no direct RPC into host-side code (the same
-  `credentials.*`-only constraint below), the buttons relay through the write-only
-  `XMEMO_OAUTH_ACTION` signal credential rather than calling anything directly, then poll
-  `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes) to detect when the browser
-  login completes.
+  flow described in [Auth](#auth). Its status badge reflects which auth method is actually in
+  effect right now — `已连接`/Connected when OAuth is active, `未连接 · 当前使用下方 API Key`/
+  "Not connected · using the API key below" when the API key is quietly doing the job as its
+  designed fallback, and a distinct "no auth configured" state only when neither is set — so an
+  unconnected OAuth session never reads as broken when the fallback is working fine. Since this
+  card has no direct RPC into host-side code (the same `credentials.*`-only constraint below), the
+  buttons relay through the write-only `XMEMO_OAUTH_ACTION` signal credential rather than calling
+  anything directly, then poll `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes)
+  to detect when the browser login completes.
 - **API key** (compatibility fallback) — reflects and can change the actual stored key via real
   `credentials.describe`/`credentials.set` calls, including correctly showing it as read-only when
   `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.
@@ -113,9 +197,9 @@ Three controls are genuinely live:
   button, saved under the `XMEMO_MODE` credential reference and picked up by `src/mode.ts` on the
   very next tool call. Unlike the API key field, the select can't show which value is currently
   stored — `credentials.describe` deliberately never exposes a credential's value, only whether it's
-  configured (see "Known Limitations") — so it always starts from the `hybrid` default and a
-  "customized"/"default" badge stands in for the value itself, the same way the API key field's
-  "configured" badge never reveals the secret.
+  configured (see [Known Limitations](#known-limitations)) — so it always starts from the `hybrid`
+  default and a "customized"/"default" badge stands in for the value itself, the same way the API
+  key field's "configured" badge never reveals the secret.
 
 The other five config fields (`apiBaseUrl`/`defaultScope`/`agentId`/`requestTimeoutMs`/
 `longRequestTimeoutMs`) aren't shown in the card at all — their defaults are fine for the vast
@@ -130,7 +214,7 @@ Ported from `xmemo-cindy-plugin/plugins/xmemo-memory/main.js`'s business logic:
 
 - `src/http.ts` — request/error handling (`AUTH_REQUIRED`, `RATE_LIMITED`, `XMEMO_SERVER_ERROR`, …).
   One structural change from upstream: Cindy's host injected `Authorization` based on request
-  hostname; this plugin resolves and attaches the bearer token itself (`src/auth.ts`).
+  hostname; this plugin resolves and attaches the auth header itself (`src/auth.ts`, `src/oauth.ts`).
 - `src/store.ts` — the local JSON store (schema, prune limits, quota guard, corrupt-file → backup
   fallback, write-temp-then-rename atomicity).
 - `src/outbox.ts` — the durable write queue: `staged → sent | pending | held | failed`, idempotent
@@ -141,6 +225,8 @@ Ported from `xmemo-cindy-plugin/plugins/xmemo-memory/main.js`'s business logic:
   bucket/scope filter (`compactCloudRecallItems`): a cloud item that doesn't exactly match the
   request is dropped, and any single violation suppresses all opaque cloud text in that response.
 - `src/redact.ts` — the 7-category credential-like-text redaction, ported verbatim.
+- `src/oauth.ts` — the whole OAuth 2.1 + PKCE client: Dynamic Client Registration, an ephemeral
+  loopback HTTP listener as the redirect target, token exchange/refresh with rotation, and revoke.
 
 One acknowledged divergence: main.js's store is one dynamic JSON blob, so it can replay a queued
 write generically. This port's store is typed per entity kind, so a **replayed** write (via
@@ -148,16 +234,34 @@ write generically. This port's store is typed per entity kind, so a **replayed**
 richer field back-fill happens only on the first attempt, made synchronously inside the same tool
 call. See the comment at the top of `src/outbox.ts`.
 
+## Capabilities and boundaries
+
+| Capability | Included | Boundary |
+|---|:---:|---|
+| Local-first hybrid memory | Yes | Local store is not encrypted at rest |
+| OAuth 2.1 + PKCE login | Yes | Needs a desktop session to open a browser in; headless `dsh` falls back to the API key |
+| Static API key auth | Yes | Compatibility fallback only — never sent alongside a connected OAuth session |
+| Durable offline write queue | Yes | Non-idempotent writes wait in `held` for explicit replay approval |
+| Recoverable deletion | Yes | `xmemo_forget` is soft delete by default |
+| Web GUI settings card | Yes | Only OAuth login, the API key, and memory mode are editable from the browser — the other five config fields need `cordis.patch.yml` |
+| Recall and search | Yes | Limited to memory visible to the authenticated account, and fail-closed on any bucket/scope mismatch |
+| Cross-agent continuity | Yes | Other agents/clients need their own authorized XMemo connection |
+| PII redaction | No | Only credential-like text is redacted, matching `xmemo-cindy-plugin` upstream |
+| MCP transport | No | Talks to MemoryOS REST directly; dsh's own `dsh-mcp-client` bridge is a separate, untouched path |
+| Bundled skill instructions | No | Reuse `xmemo-claude-plugin/skills/*/SKILL.md` instead — see [Tools](#tools) |
+| Encryption at rest | No | Same as upstream — honest that there isn't one, see [Known Limitations](#known-limitations) |
+
 ## Known Limitations
 
 - **OAuth connect needs a desktop with a browser.** The flow opens a system browser and waits on a
   loopback listener for its redirect; a headless `dsh` instance (no desktop session to open a
   browser in) can't complete it — use the static API key there instead.
 - **`XMEMO_OAUTH` and `XMEMO_OAUTH_ACTION` appear in `$DSH_HOME/.credentials.yaml` and the Models
-  page's credentials list**, alongside `XMEMO_MODE` — same accepted tradeoff as below, reusing the
-  one channel actually open to an out-of-tree plugin. `XMEMO_OAUTH` holds the access/refresh token
-  pair as an opaque JSON blob; `XMEMO_OAUTH_ACTION` is a transient write-only signal, never holding
-  anything meaningful at rest.
+  page's credentials list**, alongside `XMEMO_MODE` — an accepted tradeoff of reusing the one
+  channel that's actually open to an out-of-tree plugin (see the web GUI card limitation below).
+  `XMEMO_OAUTH` holds the access/refresh token pair as an opaque JSON blob; `XMEMO_OAUTH_ACTION` is
+  a transient write-only signal, never holding anything meaningful at rest; `XMEMO_MODE` isn't a
+  secret at all.
 - **A fresh OAuth client is registered on every connect attempt** rather than cached — Dynamic
   Client Registration exists precisely for this kind of ad hoc self-registration, and skipping the
   cache avoids persisting a fourth credential ref with its own staleness edge cases. Each registered
@@ -185,9 +289,27 @@ call. See the comment at the top of `src/outbox.ts`.
   for secrets, but it means the mode select can't be pre-filled with the true stored mode the way
   Cindy's `/kv`-backed selector can. The select always starts from the `hybrid` default; saving
   always overwrites blindly, same as the API key field already does.
-- **`XMEMO_MODE` appears in `$DSH_HOME/.credentials.yaml` and the Models page's credentials list
-  once set from the card**, even though it isn't a secret — an accepted tradeoff of reusing the one
-  channel that's actually open to an out-of-tree plugin.
+
+## Security and privacy
+
+- **Credentials never reach plugin memory as browser-readable state.** The web GUI card only ever
+  sees `configured`/`writable` booleans (`credentials.describe`) — it can change the API key, OAuth
+  tokens, and mode, but never read their values back.
+- **OAuth tokens are stored, not logged.** The access/refresh token pair lives under the `XMEMO_OAUTH`
+  credential reference; refresh tokens rotate on every use, and a reused (already-consumed) refresh
+  token is rejected server-side rather than silently accepted.
+- **Obvious credential-like text is redacted before memory and timeline writes** (`src/redact.ts`,
+  7 categories, ported verbatim from upstream) — a safeguard, not a substitute for keeping secrets
+  out of prompts.
+- **Local memory is private but not encrypted by this plugin** — protect the device and do not store
+  secrets in memory content.
+- **Deletion is recoverable by default.** `xmemo_forget` soft-deletes unless a caller explicitly
+  requests a hard, permanent delete.
+- **This repository contains no production credentials, tokens, or private memory** — only
+  credential *reference names* (e.g. `XMEMO_KEY`), never values.
+
+Canonical service policies: [Privacy policy](https://xmemo.dev/legal/privacy) ·
+[Terms of service](https://xmemo.dev/legal/tos) · [Support](https://xmemo.dev/support)
 
 ## Development
 
@@ -198,3 +320,36 @@ npm run build:client   # tsc --emitDeclarationOnly + esbuild -> lib/client.js (b
 npm run typecheck
 npm test               # node --test over tests/*.spec.ts
 ```
+
+## Agent-readable metadata
+
+| Field | Value |
+|---|---|
+| Package | `dsh-xmemo` |
+| Plugin ID | `xmemo` |
+| Runtime | DeepSeek Harness (`dsh`) |
+| Version | `0.1.0` |
+| Role | Native Cordis plugin + web GUI settings card |
+| Service | `https://xmemo.dev` |
+| Backend | MemoryOS REST API (not MCP) |
+| Authentication | OAuth 2.1 + PKCE (recommended), or static API key via `XMEMO_KEY` |
+| OAuth scopes | `memory:read memory:write` |
+| Tool profile | 16 tools, same contract as `xmemo-cindy-plugin`'s `ghost.json` |
+| Local storage | Yes — JSON hybrid store with a durable outbox, not encrypted |
+| Repository | `https://github.com/yonro/xmemo-deepseek-plugin` |
+| License | MIT |
+
+## Links
+
+- Product: https://xmemo.dev
+- Account & API keys: https://xmemo.dev/me#api-keys
+- Documentation: https://xmemo.dev/product/docs
+- Support: https://xmemo.dev/support
+- DeepSeek Harness: https://github.com/deepseek-ai/deepseek-harness
+- Sibling plugins: [Cindy](https://github.com/yonro/xmemo-cindy-plugin) ·
+  [Claude](https://github.com/yonro/xmemo-claude-plugin) ·
+  [Codex](https://github.com/yonro/xmemo-codex-plugin)
+
+## License
+
+[MIT](LICENSE) © 2026 Yonro

@@ -49,10 +49,22 @@ function Chevron({ open }: { open: boolean }) {
   )
 }
 
+/**
+ * Which auth method is actually in effect right now, mirroring auth.ts's own precedence (OAuth
+ * wins when connected, else the API key, else nothing) — surfaced so "OAuth: not connected" doesn't
+ * read as broken when the API key is quietly doing the job as its designed fallback.
+ */
+function oauthBadge(state: XmemoCardState): { key: XmemoLocaleKey; color: string; border: string } {
+  if (state.oauthConnected) return { key: 'oauthConnected', color: colors.okText, border: colors.okBorder }
+  if (state.apiKeyConfigured) return { key: 'oauthNotConnectedUsingApiKey', color: colors.muted, border: colors.cardBorder }
+  return { key: 'oauthNoAuthConfigured', color: colors.danger, border: colors.danger }
+}
+
 export function XmemoCard(props: XmemoCardProps) {
   const [open, setOpen] = useState(false)
   const state = props.useXmemoCard(snapshot => snapshot)
   const t = props.t
+  const badge = oauthBadge(state)
 
   return (
     <li style={{ listStyle: 'none', border: `0.666667px solid ${colors.cardBorder}`, borderRadius: 12, background: colors.card }}>
@@ -82,8 +94,8 @@ export function XmemoCard(props: XmemoCardProps) {
                 <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: colors.accent, border: `1px solid ${colors.accent}` }}>
                   {t('oauthRecommendedBadge')}
                 </span>
-                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: state.oauthConnected ? colors.okText : colors.muted, border: `1px solid ${state.oauthConnected ? colors.okBorder : colors.cardBorder}` }}>
-                  {t(state.oauthConnected ? 'oauthConnected' : 'oauthNotConnected')}
+                <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: badge.color, border: `1px solid ${badge.border}` }}>
+                  {t(badge.key)}
                 </span>
               </div>
               <p style={{ color: colors.muted, fontSize: 13, margin: 0 }}>
