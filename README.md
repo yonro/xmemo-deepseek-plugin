@@ -43,17 +43,12 @@ timeline, TODOs, decisions, and restart snapshots — the same tool surface as
 [xmemo-cindy-plugin](https://github.com/yonro/xmemo-cindy-plugin), reimplemented as an ordinary
 Cordis plugin instead of going through Cindy's host-specific plugin protocol.
 
-Unlike [xmemo-claude-plugin](https://github.com/yonro/xmemo-claude-plugin) and
-[xmemo-codex-plugin](https://github.com/yonro/xmemo-codex-plugin), which are thin wrappers around
-XMemo's hosted MCP server (`https://xmemo.dev/mcp`), this plugin talks directly to the **MemoryOS**
-REST API (the actual backend behind XMemo) and keeps its own local store — the same architecture as
-the Cindy plugin, just ported to Cordis/TypeScript. (dsh could also reach XMemo the MCP way, via the
-harness's own `@deepseek-ai/dsh-mcp-client` bridge — this repo is the deeper, native alternative.)
-[hermes-xmemo-plugin](https://github.com/yonro/hermes-xmemo-plugin) and
-[xmemo-openclaw-memory](https://github.com/yonro/xmemo-openclaw-memory) follow the same native,
-REST-direct pattern for their own hosts. Endpoint paths, request/response field names, and the auth
-header were verified against the MemoryOS source, not guessed from another client — including live,
-end-to-end verification of the OAuth flow against production `xmemo.dev`.
+This plugin talks directly to the **MemoryOS** REST API (the actual backend behind XMemo) and keeps
+its own local store, rather than going through XMemo's hosted MCP server (`https://xmemo.dev/mcp`)
+— dsh can also reach XMemo the MCP way via the harness's own `@deepseek-ai/dsh-mcp-client` bridge,
+but this repo is the deeper, native alternative. Endpoint paths, request/response field names, and
+the auth header were verified against the MemoryOS source, not guessed from another client —
+including live, end-to-end verification of the OAuth flow against production `xmemo.dev`.
 
 > [!NOTE]
 > DeepSeek Harness itself is a developer preview. This plugin has been exercised locally against
