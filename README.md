@@ -86,10 +86,9 @@ including live, end-to-end verification of the OAuth flow against production `xm
 
 ## Quick start
 
-Not yet published to npm (see [Known Limitations](#known-limitations)), so install from GitHub or a
-local checkout:
-
 ```sh
+dsh plugin --profile <name> add dsh-xmemo
+# or, to track main instead of the latest npm release:
 dsh plugin --profile <name> add github:yonro/xmemo-deepseek-plugin
 # or, from a local checkout:
 dsh plugin --profile <name> add ./xmemo-deepseek-plugin
@@ -263,11 +262,11 @@ call. See the comment at the top of `src/outbox.ts`.
 
 ## Known Limitations
 
-- **Not published to npm yet.** `dsh plugin add dsh-xmemo` doesn't work today; install from GitHub
-  or a local checkout instead — see [Quick start](#quick-start). Also not yet tagged with the
-  `dsh-plugin` GitHub topic, the harness's only discovery mechanism ("Contribute to the ecosystem"
-  in [`CONTRIBUTING.md`](https://github.com/deepseek-ai/deepseek-harness/blob/main/CONTRIBUTING.md))
-  — DeepSeek Harness has no central plugin marketplace or submission process by design.
+- **No central plugin marketplace exists for `dsh` by design.** Discovery is just the `dsh-plugin`
+  GitHub topic ("Contribute to the ecosystem" in
+  [`CONTRIBUTING.md`](https://github.com/deepseek-ai/deepseek-harness/blob/main/CONTRIBUTING.md)),
+  which this repo is tagged with; there's no submission, review, or PR-based listing process to
+  opt into beyond that.
 - **OAuth connect needs a desktop with a browser.** The flow opens a system browser and waits on a
   loopback listener for its redirect; a headless `dsh` instance (no desktop session to open a
   browser in) can't complete it — use the static API key there instead.
@@ -335,6 +334,21 @@ npm run build:client   # tsc --emitDeclarationOnly + esbuild -> lib/client.js (b
 npm run typecheck
 npm test               # node --test over tests/*.spec.ts
 ```
+
+### Releasing
+
+Bump `version` in `package.json`, commit, then tag and push:
+
+```sh
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin v0.1.1
+```
+
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml) picks up any `v*.*.*` tag,
+rejects it if it doesn't match `package.json`'s version, runs typecheck/test/build, publishes to
+npm with provenance using the `NPM_TOKEN` repository secret, and creates a matching GitHub Release.
+`workflow_dispatch` (with a `version` input) works the same way for a manual re-run from a commit
+already tagged that way.
 
 ## Agent-readable metadata
 
