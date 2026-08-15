@@ -69,6 +69,22 @@ Skill instructions (when to call which tool) are intentionally not part of this 
 `xmemo-claude-plugin/skills/*/SKILL.md` as-is by dropping them into a project's `.agents/skills/`;
 dsh's `skill-filesystem` provider discovers the same frontmatter format from that directory.
 
+## Web GUI card
+
+The `dsh --profile web` GUI's Settings → 插件配置 (Plugin Config) panel shows an "XMemo" card
+alongside the first-party Bash/Agent-loop/Web-search cards, via a browser bundle this same package
+ships (`src/client/`, built to `lib/client.js`, declared through the `dsh.client` manifest field in
+`package.json` — no changes to deepseek-harness itself are needed; `dsh-client-modules` scans every
+loaded plugin's `package.json` for that field, not just first-party ones).
+
+Only the **API key** control is genuinely live (real `credentials.describe`/`credentials.set` calls
+— reflects and can change the actual stored key, including correctly showing it as read-only when
+`XMEMO_KEY` is supplied by the launch environment rather than the credentials store). The other six
+config fields render as static descriptive text, not a live read — see "Known Limitations" for why.
+
+Build with `npm run build:client` (separate from the host build — needs its own `tsconfig.client.json`
+and `scripts/build-client.mjs`, since the host and browser halves target different runtimes).
+
 ## Architecture notes
 
 Ported from `xmemo-cindy-plugin/plugins/xmemo-memory/main.js`'s business logic:
@@ -107,12 +123,20 @@ call. See the comment at the top of `src/outbox.ts`.
   claim email/phone redaction, but no such code exists in `main.js` either — it's server-side or
   aspirational. This port's tool descriptions say only what the code does.
 - **Replayed writes only back-fill `cloud_id`**, not richer response fields — see Architecture notes.
+- **The web GUI card can't show live values for `mode`/`apiBaseUrl`/`defaultScope`/`agentId`/
+  `requestTimeoutMs`/`longRequestTimeoutMs`.** The harness's generic settings-persistence pipeline
+  (`ctx.settingsScope`) is gated by a hardcoded namespace allowlist in deepseek-harness's own
+  `packages/host/apiproxy/src/api-proxy.ts` (`WEB_SETTINGS_NAMESPACES`) that an out-of-tree plugin
+  cannot extend from its own package (the source comment there calls generalizing it "deferred
+  work"). Only the ungated `credentials.*` RPC is open to third-party plugins today, which is why
+  just the API key control is live.
 
 ## Development
 
 ```sh
 npm install
-npm run build       # tsc -> lib/
+npm run build         # tsc -> lib/ (host half)
+npm run build:client   # tsc --emitDeclarationOnly + esbuild -> lib/client.js (browser half)
 npm run typecheck
-npm test             # node --test over tests/*.spec.ts
+npm test               # node --test over tests/*.spec.ts
 ```
