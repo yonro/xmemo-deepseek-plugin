@@ -14,8 +14,7 @@ export type XmemoLocaleKey =
   | 'oauthLabel'
   | 'oauthRecommendedBadge'
   | 'oauthConnected'
-  | 'oauthNotConnectedUsingApiKey'
-  | 'oauthNoAuthConfigured'
+  | 'oauthNotConnected'
   | 'oauthHint'
   | 'oauthConnectButton'
   | 'oauthDisconnectButton'
@@ -51,9 +50,8 @@ export const zh: Record<XmemoLocaleKey, string> = {
   oauthLabel: 'XMemo 账号登录',
   oauthRecommendedBadge: '推荐',
   oauthConnected: '已连接',
-  oauthNotConnectedUsingApiKey: '未连接 · 当前使用下方 API Key',
-  oauthNoAuthConfigured: '未连接 · 未配置任何认证方式',
-  oauthHint: '点击后会打开系统默认浏览器完成 XMemo 登录（PKCE + OAuth 2.1）。连接成功后将优先使用此登录状态；下方的 API Key 仅作为兼容后备，两者不会同时发送。',
+  oauthNotConnected: '未连接',
+  oauthHint: '点击后会打开浏览器完成 XMemo 登录；连接后将优先使用此账号，无需再配置下方 API Key。',
   oauthConnectButton: '连接 XMemo 账号',
   oauthDisconnectButton: '断开连接',
   oauthConnecting: '已打开浏览器，请在其中完成登录……',
@@ -89,10 +87,9 @@ export const en: Record<XmemoLocaleKey, string> = {
   oauthLabel: 'XMemo account login',
   oauthRecommendedBadge: 'Recommended',
   oauthConnected: 'Connected',
-  oauthNotConnectedUsingApiKey: 'Not connected · using the API key below',
-  oauthNoAuthConfigured: 'Not connected · no auth configured yet',
-  oauthHint: "Opens your default browser to sign in to XMemo (PKCE + OAuth 2.1). Once connected this "
-    + "is used automatically; the API key below is only a compatibility fallback — never sent alongside it.",
+  oauthNotConnected: 'Not connected',
+  oauthHint: 'Opens a browser to sign in to XMemo. Once connected, this account is used automatically '
+    + '— no need to set the API key below.',
   oauthConnectButton: 'Connect XMemo account',
   oauthDisconnectButton: 'Disconnect',
   oauthConnecting: 'Browser opened — finish signing in there…',

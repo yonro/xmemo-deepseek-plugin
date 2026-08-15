@@ -181,15 +181,14 @@ loaded plugin's `package.json` for that field, not just first-party ones).
 Three controls are genuinely live:
 
 - **XMemo account login** (recommended, shown first) — Connect/Disconnect buttons driving the OAuth
-  flow described in [Auth](#auth). Its status badge reflects which auth method is actually in
-  effect right now — `已连接`/Connected when OAuth is active, `未连接 · 当前使用下方 API Key`/
-  "Not connected · using the API key below" when the API key is quietly doing the job as its
-  designed fallback, and a distinct "no auth configured" state only when neither is set — so an
-  unconnected OAuth session never reads as broken when the fallback is working fine. Since this
-  card has no direct RPC into host-side code (the same `credentials.*`-only constraint below), the
-  buttons relay through the write-only `XMEMO_OAUTH_ACTION` signal credential rather than calling
-  anything directly, then poll `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes)
-  to detect when the browser login completes.
+  flow described in [Auth](#auth). Its status badge reads `已连接`/Connected whenever *either* OAuth
+  or the API key is set up — matching `auth.ts`'s own "OAuth first, API key fallback" precedence —
+  and only falls back to `未连接`/Not connected when neither is configured, so a working API-key
+  setup never reads as broken just because OAuth hasn't been connected. Since this card has no
+  direct RPC into host-side code (the same `credentials.*`-only constraint below), the buttons relay
+  through the write-only `XMEMO_OAUTH_ACTION` signal credential rather than calling anything
+  directly, then poll `credentials.describe('XMEMO_OAUTH')` (every 2s, up to ~5.5 minutes) to detect
+  when the browser login completes.
 - **API key** (compatibility fallback) — reflects and can change the actual stored key via real
   `credentials.describe`/`credentials.set` calls, including correctly showing it as read-only when
   `XMEMO_KEY` is supplied by the launch environment rather than the credentials store.

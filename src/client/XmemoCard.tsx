@@ -49,15 +49,12 @@ function Chevron({ open }: { open: boolean }) {
   )
 }
 
-/**
- * Which auth method is actually in effect right now, mirroring auth.ts's own precedence (OAuth
- * wins when connected, else the API key, else nothing) — surfaced so "OAuth: not connected" doesn't
- * read as broken when the API key is quietly doing the job as its designed fallback.
- */
+/** Authenticated when either method is set up — the API key counts as fully "connected" too, matching auth.ts's own fallback. */
 function oauthBadge(state: XmemoCardState): { key: XmemoLocaleKey; color: string; border: string } {
-  if (state.oauthConnected) return { key: 'oauthConnected', color: colors.okText, border: colors.okBorder }
-  if (state.apiKeyConfigured) return { key: 'oauthNotConnectedUsingApiKey', color: colors.muted, border: colors.cardBorder }
-  return { key: 'oauthNoAuthConfigured', color: colors.danger, border: colors.danger }
+  const authenticated = state.oauthConnected || state.apiKeyConfigured
+  return authenticated
+    ? { key: 'oauthConnected', color: colors.okText, border: colors.okBorder }
+    : { key: 'oauthNotConnected', color: colors.muted, border: colors.cardBorder }
 }
 
 export function XmemoCard(props: XmemoCardProps) {
