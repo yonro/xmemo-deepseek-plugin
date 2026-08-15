@@ -1,0 +1,18 @@
+# Applied to a profile's Cordis tree when this bundle is listed in
+# dsh.profile.bundles (see docs/user/develop/basic/publish.md in the
+# deepseek-harness repo). Users override any field from their own
+# profile/home cordis.patch.yml by restating the whole `config` block
+# for id `xmemo`.
+- insert:
+    - id: xmemo
+      name: dsh-xmemo
+      config:
+        mode: hybrid
+        apiKeyCredential: XMEMO_KEY
+        # MemoryOS (D:\repos\memory-os) backs the production XMemo deployment; override for a
+        # local dev server (e.g. http://localhost:8000) via profile/home cordis.patch.yml.
+        apiBaseUrl: https://xmemo.dev
+        defaultScope: dsh
+        agentId: dsh
+        requestTimeoutMs: 30000
+        longRequestTimeoutMs: 60000
